@@ -73,7 +73,7 @@ func Verbose(level int, format string, args ...interface{}) {
 }
 
 func write_file(file string, buf []byte) (int, error) {
-	fp, err := os.OpenFile(file, syscall.O_RDWR | syscall.O_CREAT, os.ModeExclusive)
+	fp, err := os.OpenFile(file, syscall.O_RDWR | syscall.O_CREAT, 0755)
 	if err != nil { return 0, err }
 	defer fp.Close()
 
