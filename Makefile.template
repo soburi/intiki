@@ -1,0 +1,167 @@
+CONTIKI = $(ARDUINO_SYSTEM_PATH)/contiki
+
+CONTIKI_TARGET_MAIN = startup.c
+
+CONTIKI_PROJECT = main
+
+define uniq =
+  $(eval seen :=)
+  $(foreach _,$1,$(if $(filter $_,${seen}),,$(eval seen += $_)))
+  ${seen}
+endef
+
+define _dirdepline =
+$1: | $(dir $1)
+$(if $(filter $(dir $1),core/ libraries/ sketch $(OBJECTDIR)),,
+$(dir $1): | $(OBJECTDIR) core/ libraries/ sketch/
+)
+endef
+
+define dirdeps =
+$(foreach _,$(1), $(eval $(call _dirdepline,$_)))
+endef
+
+ARDUINO_CFLAGS = ### <<<ARDUINO_CFLAGS>>> ###
+
+ARDUINO_CFLAGS += $(EXTRA_CFLAGS)
+
+ARDUINO_PROJECT_NAME     = ### <<<ARDUINO_PROJECT_NAME>>>     ###
+ARDUINO_SYSTEM_PATH      = ### <<<ARDUINO_SYSTEM_PATH>>>      ###
+ARDUINO_BUILD_PATH       = ### <<<ARDUINO_BUILD_PATH>>>       ###
+ARDUINO_CORE_PATH        = ### <<<ARDUINO_CORE_PATH>>>        ###
+ARDUINO_VARIANT_PATH     = ### <<<ARDUINO_VARIANT_PATH>>>     ###
+ARDUINO_ARCHIVE_FILE     = ### <<<ARDUINO_ARCHIVE_FILE>>>     ###
+ARDUINO_VARIANT          = ### <<<ARDUINO_VARIANT>>>          ###
+ARDUINO_PLATFORM_VERSION = ### <<<ARDUINO_PLATFORM_VERSION>>> ###
+
+ARDUINO_CORE_A = $(ARDUINO_ARCHIVE_FILE)
+ARDUINO_LIBRARIES_A = libraries/libraries.a
+ARDUINO_SKETCH_A = sketch/sketch.a
+
+ARDUINO_CORES_SRCS = \
+### <<<ARDUINO_CORES_SRCS>>> ###
+
+ARDUINO_VARIANT_SRCS = \
+### <<<ARDUINO_VARIANT_SRCS>>> ###
+
+ARDUINO_LIBRARIES_SRCS = \
+### <<<ARDUINO_LIBRARIES_SRCS>>> ###
+
+ARDUINO_CORE_OBJS      = $(subst .S,.o,$(subst .c,.o,$(subst .cpp,.o, $(addprefix $(OBJECTDIR)/,$(ARDUINO_CORES_SRCS) ) ) ) )
+ARDUINO_CORE_OBJS     += $(subst .S,.o,$(subst .c,.o,$(subst .cpp,.o, $(addprefix $(OBJECTDIR)/,$(ARDUINO_VARIANT_SRCS) ) ) ) )
+ARDUINO_LIBRARIES_OBJS = $(subst .S,.o,$(subst .c,.o,$(subst .cpp,.o, $(addprefix $(OBJECTDIR)/,$(ARDUINO_LIBRARIES_SRCS) ) ) ) )
+ARDUINO_SKETCH_OBJS    = $(OBJECTDIR)/$(ARDUINO_BUILD_PATH)/sketch/$(ARDUINO_PROJECT_NAME).o
+
+
+ARDUINO_PREPROC_CFLAGS = $(filter-out -c -E -std=%, $(CFLAGS))
+
+ARDUINO_PREPROC_INCLUDES_FLAGS = \
+### <<<ARDUINO_PREPROC_INCLUDES_FLAGS>>> ###
+ARDUINO_PREPROC_INCLUDES_SOURCE = \
+### <<<ARDUINO_PREPROC_INCLUDES_SOURCE>>> ###
+ARDUINO_PREPROC_INCLUDES_OUTFILE = \
+### <<<ARDUINO_PREPROC_INCLUDES_OUTFILE>>> ###
+
+ARDUINO_PREPROC_MACROS_FLAGS = \
+### <<<ARDUINO_PREPROC_MACROS_FLAGS>>> ###
+ARDUINO_PREPROC_MACROS_SOURCE = \
+### <<<ARDUINO_PREPROC_MACROS_SOURCE>>> ###
+ARDUINO_PREPROC_MACROS_OUTFILE = \
+### <<<ARDUINO_PREPROC_MACROS_OUTFILE>>> ###
+
+TARGET ?= $(ARDUINO_VARIANT)
+
+RELSTR ?= $(ARDUINO_PLATFORM_VERSION)
+
+OUTPUT_NAME ?= $(ARDUINO_PROJECT_NAME)
+
+CFLAGS += $(ARDUINO_CFLAGS)
+
+TARGET_LIBFILES += $(ARDUINO_CORE_A) $(ARDUINO_LIBRARIES_A) $(ARDUINO_SKETCH_A)
+
+defalut: all
+
+all: $(OUTPUT_NAME).elf
+
+$(CONTIKI_PROJECT).$(TARGET): $(TARGET_LIBFILES)
+
+include $(CONTIKI)/Makefile.include
+
+include $(ARDUINO_VARIANT_PATH)/Makefile.variant
+
+.PHONY: clean_arduino
+clean_arduino:
+	$(Q)rm -rf ./core $(ARDUINO_CORE_OBJS) $(ARDUINO_LIBRARIES_OBJS)  $(ARDUINO_SKETCH_OBJS) $(ARDUINO_CORE_A) $(ARDUINO_LIBRARIES_A) $(ARDUINO_SKETCH_A)
+
+
+clean: clean_arduino
+
+.PHONY: preproc.includes
+preproc.includes:
+	$(Q)$(CC) $(ARDUINO_PREPROC_INCLUDES_FLAGS) $(ARDUINO_PREPROC_CFLAGS) $(ARDUINO_PREPROC_INCLUDES_SOURCE) -o $(ARDUINO_PREPROC_INCLUDES_OUTFILE)
+
+.PHONY: preproc.macros
+preproc.macros:
+	$(Q)$(CC) $(ARDUINO_PREPROC_MACROS_FLAGS) $(ARDUINO_PREPROC_CFLAGS) $(ARDUINO_PREPROC_MACROS_SOURCE) -o $(ARDUINO_PREPROC_MACROS_OUTFILE)
+
+
+ifeq ($(CPPFLAGS), )
+CPPFLAGS = $(filter-out -std=%, $(CFLAGS)) -x c++ -std=c++03 -fno-threadsafe-statics -fno-rtti -fno-exceptions
+endif
+
+ifeq ($(OBJCOPY), )
+OBJCOPY = $(subst gcc,objcopy,$(CC))
+endif
+
+ifeq ($(SIZE), )
+SIZE = $(subst gcc,size,$(CC))
+endif
+
+#.INTERMEDIATE: $(OBJECTDIR)/$(ARDUINO_CORE_PATH)/$(CONTIKI_TARGET_MAIN:.c=.o)
+$(OBJECTDIR)/$(CONTIKI_TARGET_MAIN:.c=.o): $(OBJECTDIR)/$(ARDUINO_CORE_PATH)/$(CONTIKI_TARGET_MAIN:.c=.o)
+	$(Q)cp $< $@
+
+%.co:   $(OBJECTDIR)/$(ARDUINO_CORE_PATH)/%.o
+	$(Q)cp $< $@
+
+ifndef CUSTOM_RULE_CPP_TO_OBJECTDIR_O
+ifdef CUSTOM_RULE_C_TO_OBJECTDIR_O
+$(error Non default %.o: %.c rules are defined. Please define custom %o: %.cpp rule.)
+endif
+$(OBJECTDIR)/%.o: %.cpp
+	$(TRACE_CC)
+	$(Q)$(CC)  $(CPPFLAGS) -c $< -o $@
+endif
+
+
+$(ARDUINO_CORE_A): $(ARDUINO_CORE_OBJS)
+	$(Q)$(AR) rcf $@ $(ARDUINO_CORE_OBJS)
+
+$(ARDUINO_LIBRARIES_A): $(ARDUINO_LIBRARIES_OBJS)
+	$(Q)$(AR) rcf $@ $(ARDUINO_LIBRARIES_OBJS)
+
+$(ARDUINO_SKETCH_A): $(ARDUINO_SKETCH_OBJS)
+	$(Q)$(AR) rcf $@ $(ARDUINO_SKETCH_OBJS)
+
+
+
+$(OUTPUT_NAME).bin: $(CONTIKI_PROJECT).$(TARGET)
+	$(Q)$(OBJCOPY) -S -O binary $< $@
+
+$(OUTPUT_NAME).hex: $(CONTIKI_PROJECT).$(TARGET)
+	$(Q)$(OBJCOPY) -S -O ihex $< $@
+
+$(OUTPUT_NAME).elf: $(CONTIKI_PROJECT).$(TARGET)
+	$(Q)$(OBJCOPY) $< $@
+
+%/:
+	$(Q)mkdir -p $@
+
+$(call dirdeps,$(ARDUINO_LIBRARIES_A))
+$(call dirdeps,$(ARDUINO_CORE_OBJS))
+$(call dirdeps,$(ARDUINO_LIBRARIES_OBJS))
+$(call dirdeps,$(ARDUINO_SKETCH_OBJS))
+
+.PHONY: size
+size: $(CONTIKI_PROJECT).$(TARGET)
+	$(SIZE) -A $<
