@@ -165,3 +165,8 @@ $(call dirdeps,$(ARDUINO_SKETCH_OBJS))
 .PHONY: size
 size: $(CONTIKI_PROJECT).$(TARGET)
 	$(SIZE) -A $<
+
+# Workaround for conflicts of "core/dev/spi.h" and "libraries/SPI/SPI.h" .
+ifeq ($(MAKECMDGOALS),preproc.macros)
+CFLAGS:=$(filter-out -I%$(CONTIKI)/core/dev, $(CFLAGS))
+endif
