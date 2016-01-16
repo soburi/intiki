@@ -58,6 +58,7 @@ type Command struct {
 	VariantPath string `json:"variant_path"`
 	ProjectName string `json:"project_name"`
 	ArchiveFile string `json:"archive_file"`
+	SerialPort string `json:"serial_port"`
 }
 
 type Submodule struct {
@@ -361,6 +362,7 @@ var (
 	platform_path string
 	project_name string
 	archive_file string
+	serial_port string
 	stage string
 	template string
 	variant_name string
@@ -384,6 +386,7 @@ func main() {
 	flag.StringVar(&variant_name,		"build.variant", "",		"same as platform.txt")
 	flag.StringVar(&project_name,		"project_name", "",		"same as platform.txt")
 	flag.StringVar(&archive_file,		"archive_file", "",		"same as platform.txt")
+	flag.StringVar(&serial_port,		"serial.port", "",		"same as platform.txt")
 	flag.StringVar(&recipe,			"recipe", "",			"recipe")
 	flag.StringVar(&stage,			"stage", "",			"build stage")
 	flag.StringVar(&target,			"target", "",			"target file")
@@ -410,7 +413,7 @@ func main() {
 	if recipe == "cpp.o" || recipe == "c.o" || recipe == "S.o" || recipe == "ar" || recipe == "ld" {
 		cmd := Command{	stage, recipe, source, target, flags,
 				build_path, core_path, system_path, variant_path,
-				project_name, archive_file }
+				project_name, archive_file, serial_port }
 
 		stgfile := build_path + string(os.PathSeparator) + "genmf.stage"
 		_, err := os.Stat(stgfile)
@@ -434,7 +437,17 @@ func main() {
 	} else if recipe == "make" {
 		numcores := os.Getenv("NUMBER_OF_PROCESSORS")
 
-		args := append([]string{ "-j" + numcores, "-C",ToMsysSlash(build_path)}, flags...)
+		sys_args := []string{ "-j" + numcores, "-C",ToMsysSlash(build_path)}
+
+		rep := regexp.MustCompile(`([0-9]*)(\s*)$`)
+		matches := rep.FindAllStringSubmatch(serial_port,-1)
+
+		if matches != nil {
+			mote := matches[0][1]
+			sys_args = append(sys_args, "MOTE="+mote)
+		}
+
+		args := append(sys_args, flags...)
 
 		exitStatus := ExecCommand("make", args...)
 		os.Exit(exitStatus)
