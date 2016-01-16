@@ -130,7 +130,7 @@ $(error Non default %.o: %.c rules are defined. Please define custom %o: %.cpp r
 endif
 $(OBJECTDIR)/%.o: %.cpp
 	$(TRACE_CC)
-	$(Q)$(CC)  $(CPPFLAGS) -c $< -o $@
+	$(Q)$(CC)  $(CPPFLAGS) -MMD -c $< -o $@
 endif
 
 
