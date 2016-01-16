@@ -30,6 +30,7 @@
 import (
 	"archive/zip"
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -43,6 +44,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"strconv"
 	"syscall"
 )
 
@@ -107,30 +109,30 @@ func decode_from_file(file string, ifc interface{}) error {
 }
 
 func select_command(slc []Command, f func(s Command) bool) []Command {
-    ans := make([]Command, 0)
-    for _, x := range slc {
-        if f(x) == true {
-            ans = append(ans, x)
-        }
-    }
-    return ans
+	ans := make([]Command, 0)
+	for _, x := range slc {
+		if f(x) == true {
+			ans = append(ans, x)
+		}
+	}
+	return ans
 }
 
 func collect_string(slc []Command, f func(s Command) string) []string {
-    ans := make([]string, 0)
-    for _, x := range slc {
+	ans := make([]string, 0)
+	for _, x := range slc {
 	ans = append(ans, f(x))
-    }
-    return ans
+	}
+	return ans
 }
 
 func contains(s []string, e string) bool {
-    for _, a := range s {
-        if a == e {
-            return true
-        }
-    }
-    return false
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }
 
 func format_makefile(template string, replace map[string]string) string {
@@ -306,7 +308,78 @@ func PreparePackage(pfpath string) error {
 	return nil
 }
 
-func ExecCommand(exe string, args... string) int {
+func GetLineOfFile(filename string, lineno int) (string, error) {
+	f, err := os.Open(filename)
+	if err != nil {
+		Verbose(0, "File %s could not read: %v\n", filename, err)
+		return "", err
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+
+	count := 1
+	for scanner.Scan() {
+		if count == lineno {
+			return scanner.Text(), nil
+		}
+		count += 1
+	}
+
+	if serr := scanner.Err(); serr != nil {
+		Verbose(0, "File %s scan error: %v\n", filename, err)
+		return "", serr
+	}
+
+	return "", errors.New("not found")
+}
+
+func PrintErrIncludeLine(reader io.Reader) error {
+	scanner := bufio.NewScanner(reader)
+
+	INCLUDE_REGEXP := regexp.MustCompile(`(?ms)^\\s*#[ \t]*include\\s*[<\"](\\S+)[\">]`)
+	NOSUCHFILE_REGEXP := regexp.MustCompile(`(.*):([0-9]*):([0-9]*): fatal error:.*: No such file or directory$`)
+
+	var file string
+	var lineno int
+	var column int
+	var matches [][]string
+	var err error
+	prev_match_no_suchfile := false
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		matches = NOSUCHFILE_REGEXP.FindAllStringSubmatch(line, -1)
+		if matches != nil {
+			file = matches[0][1]
+			lineno, err = strconv.Atoi(matches[0][2])
+			if err != nil {
+				return err
+			}
+			column, err = strconv.Atoi(matches[0][3])
+			if err != nil {
+				return err
+			}
+			prev_match_no_suchfile = true
+		} else {
+			matches := INCLUDE_REGEXP.FindAllStringSubmatch(line, -1)
+			if matches == nil && prev_match_no_suchfile {
+				incline, errx := GetLineOfFile(file, lineno)
+				if errx == nil {
+					fmt.Fprintf(os.Stderr, " " + incline + "\n")
+					fmt.Fprintf(os.Stderr, strings.Repeat(" ", column) + "^\n")
+				}
+			}
+			prev_match_no_suchfile = false
+		}
+		fmt.Fprintf(os.Stderr, line)
+		fmt.Fprintf(os.Stderr, "\n")
+	}
+
+	return nil
+}
+
+func ExecCommand(ostrm io.Writer, estrm io.Writer, exe string, args... string) int {
 	path := os.Getenv("PATH")
 	if(cmds_path != "") {
 		path = cmds_path + string(os.PathListSeparator) + path
@@ -326,8 +399,8 @@ func ExecCommand(exe string, args... string) int {
 	Verbose(0, exe + " " + strings.Join(args, " ") + "\n")
 
 	cmd := exec.Command(exe, args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stdout = ostrm
+	cmd.Stderr = estrm
 
 	err := cmd.Run()
 
@@ -449,7 +522,7 @@ func main() {
 
 		args := append(sys_args, flags...)
 
-		exitStatus := ExecCommand("make", args...)
+		exitStatus := ExecCommand(os.Stdout, os.Stderr, "make", args...)
 		os.Exit(exitStatus)
 
 	} else if recipe == "preproc.includes" || recipe == "preproc.macros" {
@@ -511,7 +584,12 @@ func main() {
 		os.Remove(build_path + string(os.PathSeparator) + "Makefile")
 		write_file(build_path + string(os.PathSeparator) + "Makefile", []byte(out))
 
-		exitStatus := ExecCommand("make", args...)
+		var bufStdErr bytes.Buffer
+
+		exitStatus := ExecCommand(os.Stdout, &bufStdErr, "make", args...)
+
+		err = PrintErrIncludeLine(&bufStdErr)
+
 		os.Exit(exitStatus)
 
 	} else if recipe == "makefile" {
