@@ -12,8 +12,8 @@ endef
 
 define _dirdepline =
 $1: | $(dir $1)
-$(if $(filter $(dir $1),core/ libraries/ sketch $(OBJECTDIR)),,
-$(dir $1): | $(OBJECTDIR) core/ libraries/ sketch/
+$(if $(filter $(dir $1),core/ libraries/ sketch $(OBJECTDIR) $(ARDUINO_OBJECTDIR)),,
+$(dir $1): | $(OBJECTDIR) $(ARDUINO_OBJECTDIR)/ core/ libraries/ sketch/
 )
 endef
 
@@ -35,16 +35,18 @@ ARDUINO_VARIANT          = ### <<<ARDUINO_VARIANT>>>          ###
 ARDUINO_PLATFORM_VERSION = ### <<<ARDUINO_PLATFORM_VERSION>>> ###
 
 ifneq ($(PLATFORM_CONF_H),)
-ARDUINO_CFLAGS += -DPLATFORM_CONF_H=\"$(PLATFORM_CONF_H)\"
+CFLAGS += -DPLATFORM_CONF_H=\"$(PLATFORM_CONF_H)\"
 endif
 
 ifneq ($(PROJECT_CONF_H),)
-ARDUINO_CFLAGS += -DPROJECT_CONF_H="$(PROJECT_CONF_H)"
+CFLAGS += -DPROJECT_CONF_H=\"$(PROJECT_CONF_H)\"
 endif
 
 ARDUINO_CORE_A = $(ARDUINO_ARCHIVE_FILE)
 ARDUINO_LIBRARIES_A = libraries/libraries.a
 ARDUINO_SKETCH_A = sketch/sketch.a
+
+ARDUINO_OBJECTDIR = obj_arduino
 
 ARDUINO_CORES_SRCS = \
 ### <<<ARDUINO_CORES_SRCS>>> ###
@@ -55,10 +57,10 @@ ARDUINO_VARIANT_SRCS = \
 ARDUINO_LIBRARIES_SRCS = \
 ### <<<ARDUINO_LIBRARIES_SRCS>>> ###
 
-ARDUINO_CORE_OBJS      = $(subst .S,.o,$(subst .c,.o,$(subst .cpp,.o, $(addprefix $(OBJECTDIR)/,$(ARDUINO_VARIANT_SRCS) ) ) ) )
-ARDUINO_CORE_OBJS     += $(subst .S,.o,$(subst .c,.o,$(subst .cpp,.o, $(addprefix $(OBJECTDIR)/,$(ARDUINO_CORES_SRCS) ) ) ) )
-ARDUINO_LIBRARIES_OBJS = $(subst .S,.o,$(subst .c,.o,$(subst .cpp,.o, $(addprefix $(OBJECTDIR)/,$(ARDUINO_LIBRARIES_SRCS) ) ) ) )
-ARDUINO_SKETCH_OBJS    = $(OBJECTDIR)/$(ARDUINO_BUILD_PATH)/sketch/$(ARDUINO_PROJECT_NAME).o
+ARDUINO_CORE_OBJS      = $(subst .S,.o,$(subst .c,.o,$(subst .cpp,.o, $(addprefix $(ARDUINO_OBJECTDIR)/,$(ARDUINO_VARIANT_SRCS) ) ) ) )
+ARDUINO_CORE_OBJS     += $(subst .S,.o,$(subst .c,.o,$(subst .cpp,.o, $(addprefix $(ARDUINO_OBJECTDIR)/,$(ARDUINO_CORES_SRCS) ) ) ) )
+ARDUINO_LIBRARIES_OBJS = $(subst .S,.o,$(subst .c,.o,$(subst .cpp,.o, $(addprefix $(ARDUINO_OBJECTDIR)/,$(ARDUINO_LIBRARIES_SRCS) ) ) ) )
+ARDUINO_SKETCH_OBJS    = $(ARDUINO_OBJECTDIR)/$(ARDUINO_BUILD_PATH)/sketch/$(ARDUINO_PROJECT_NAME).o
 
 
 ARDUINO_PREPROC_CFLAGS = $(filter-out -c -E -std=%, $(CFLAGS))
@@ -83,8 +85,6 @@ RELSTR ?= $(ARDUINO_PLATFORM_VERSION)
 
 OUTPUT_NAME ?= $(ARDUINO_PROJECT_NAME)
 
-CFLAGS += $(ARDUINO_CFLAGS)
-
 TARGET_LIBFILES += $(ARDUINO_SKETCH_A) $(ARDUINO_LIBRARIES_A) $(ARDUINO_CORE_A)
 
 defalut: all
@@ -99,7 +99,7 @@ include $(ARDUINO_VARIANT_PATH)/Makefile.variant
 
 .PHONY: clean_arduino
 clean_arduino:
-	$(Q)rm -rf ./core $(ARDUINO_CORE_OBJS) $(ARDUINO_LIBRARIES_OBJS)  $(ARDUINO_SKETCH_OBJS) $(ARDUINO_CORE_A) $(ARDUINO_LIBRARIES_A) $(ARDUINO_SKETCH_A)
+	$(Q)rm -rf ./core $(ARDUINO_CORE_OBJS) $(ARDUINO_LIBRARIES_OBJS)  $(ARDUINO_SKETCH_OBJS) $(ARDUINO_CORE_A) $(ARDUINO_LIBRARIES_A) $(ARDUINO_SKETCH_A) $(ARDUINO_OBJECTDIR)
 
 
 clean: clean_arduino
@@ -126,29 +126,39 @@ SIZE = $(subst gcc,size,$(CC))
 endif
 
 #.INTERMEDIATE: $(OBJECTDIR)/$(ARDUINO_CORE_PATH)/$(CONTIKI_TARGET_MAIN:.c=.o)
-$(OBJECTDIR)/$(CONTIKI_TARGET_MAIN:.c=.o): $(OBJECTDIR)/$(ARDUINO_CORE_PATH)/$(CONTIKI_TARGET_MAIN:.c=.o)
+$(OBJECTDIR)/$(CONTIKI_TARGET_MAIN:.c=.o): $(ARDUINO_OBJECTDIR)/$(ARDUINO_CORE_PATH)/$(CONTIKI_TARGET_MAIN:.c=.o)
 	$(Q)cp $< $@
 
-%.co:   $(OBJECTDIR)/$(ARDUINO_CORE_PATH)/%.o
+%.co: $(ARDUINO_OBJECTDIR)/$(ARDUINO_CORE_PATH)/%.o
 	$(Q)cp $< $@
 
-ifndef CUSTOM_RULE_CPP_TO_OBJECTDIR_O
+ifndef CUSTOM_RULE_CPP_TO_ARDUINO_OBJECTDIR_O
 ifdef CUSTOM_RULE_C_TO_OBJECTDIR_O
-$(error Non default %.o: %.c rules are defined. Please define custom %o: %.cpp rule.)
+$(error Non default %.o: %.c rules for arduino source are defined. Please define custom $(ARDUINO_OBJECTDIR)/%o: %.cpp rule.)
 endif
-$(OBJECTDIR)/%.o: %.cpp
+$(ARDUINO_OBJECTDIR)/%.o: %.cpp
 	$(TRACE_CC)
-	$(Q)$(CC)  $(CPPFLAGS) -MMD -c $< -o $@
+	$(Q)$(CC) $(ARDUINO_CFLAGS) $(CPPFLAGS) -MMD -c $< -o $@
+	@$(FINALIZE_DEPENDENCY)
 endif
 
+ifndef CUSTOM_RULE_C_TO_ARDUINO_OBJECTDIR_O
+ifdef CUSTOM_RULE_C_TO_OBJECTDIR_O
+$(error Non default %.o: %.c rules for arduino source are defined. Please define custom $(ARDUINO_OBJECTDIR)/%o: %.c rule.)
+endif
+$(ARDUINO_OBJECTDIR)/%.o: %.c
+	$(TRACE_CC)
+	$(Q)$(CC) $(ARDUINO_CFLAGS) $(CFLAGS) -MMD -c $< -o $@
+	@$(FINALIZE_DEPENDENCY)
+endif
 
-$(ARDUINO_CORE_A): $(ARDUINO_CORE_OBJS)
+$(ARDUINO_CORE_A): $(ARDUINO_CORE_OBJS) $(ARDUINO_OBJECTDIR)/
 	$(Q)$(AR) rcf $@ $(ARDUINO_CORE_OBJS)
 
-$(ARDUINO_LIBRARIES_A): $(ARDUINO_LIBRARIES_OBJS)
+$(ARDUINO_LIBRARIES_A): $(ARDUINO_LIBRARIES_OBJS) $(ARDUINO_OBJECTDIR)/
 	$(Q)$(AR) rcf $@ $(ARDUINO_LIBRARIES_OBJS)
 
-$(ARDUINO_SKETCH_A): $(ARDUINO_SKETCH_OBJS)
+$(ARDUINO_SKETCH_A): $(ARDUINO_SKETCH_OBJS) $(ARDUINO_OBJECTDIR)/
 	$(Q)$(AR) rcf $@ $(ARDUINO_SKETCH_OBJS)
 
 
