@@ -478,7 +478,10 @@ func main() {
 
 	Verbose(3, "recipe:%s stage:%s target:%s source:%s\n", recipe,stage,target,source)
 
-	genmf := strings.Replace(target + "_" + source, "\\", "_", -1);
+	genmf := strings.Replace(strings.TrimPrefix(target, build_path), "\\", "_", -1);
+	if recipe == "ar" {
+		genmf = genmf + strings.Replace("_" + strings.TrimPrefix(source, build_path), "\\", "_", -1);
+	}
 	genmf = strings.Replace(genmf, "/", "_", -1);
 	genmf = strings.Replace(genmf, ":", "_", -1);
 	genmf = build_path + string(os.PathSeparator) + genmf + "." + recipe + ".genmf"
