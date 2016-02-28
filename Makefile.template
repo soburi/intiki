@@ -114,7 +114,7 @@ preproc.macros:
 
 
 ifeq ($(CPPFLAGS), )
-CPPFLAGS = $(filter-out -std=%, $(CFLAGS)) -x c++ -std=c++03 -fno-threadsafe-statics -fno-rtti -fno-exceptions
+CPPFLAGS = $(filter-out -std=%, $(CFLAGS)) -std=c++03 -fno-threadsafe-statics -fno-rtti -fno-exceptions
 endif
 
 ifeq ($(OBJCOPY), )
