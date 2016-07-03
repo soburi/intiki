@@ -23,7 +23,7 @@ install:
 - gox -build-toolchain -osarch=darwin/amd64
 script:
 - GOOS=linux   GOARCH=amd64 go build -o  pkg/linux_amd64/${GHREPO_NAME}/${GHREPO_NAME}
-- GOOS=windows GOARCH=386   go build -o  pkg/windows_386/${GHREPO_NAME}/${GHREPO_NAME}
+- GOOS=windows GOARCH=386   go build -o  pkg/windows_386/${GHREPO_NAME}/${GHREPO_NAME}.exe
 - GOOS=darwin  GOARCH=amd64 go build -o pkg/darwin_amd64/${GHREPO_NAME}/${GHREPO_NAME}
 - cp Makefile.template  pkg/linux_amd64/${GHREPO_NAME}
 - cp Makefile.template  pkg/windows_386/${GHREPO_NAME}
