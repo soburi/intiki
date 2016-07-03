@@ -1,0 +1,33 @@
+language: go
+go: 1.3
+env: "PATH=/home/travis/gopath/bin:$PATH"
+deploy:
+  provider: releases
+  api_key:
+    secure: J8PNmHob/t4qBc8pjLr3p0iY3GxEJq2ZF2MrLe0omEyPAdW3a2I1fk9NXzqGeMmnA0bnF2VF40t9k2TeMaqKE1eysm+XFAIRM+STqEM3u1yO3ueAaRZT66ttv4Bta4m68NtwOvrl2YOn+qWL+c2UTKVQAGt37k9a6HD+IEpnsYb9Pe74KE6MGOl9WN7WR1Y7fFpCOZtg134WgUcj3wtDkKhPJle6TlY8OQHb6DfgZABT2Uivlpz7ybMvveSK6h0RczKYukpcWG46KN64KvTVEsjB3XgeBn0D+n+0ZwGTAjTaVWi7yoavxMpmnF+jhSbWBU7AZKMS+5+4JCHqGwVJrU8b65n2C0KW8pT5LAezpctlWZIF/CTf40NjFYMz1WnMm4wSl5gx6Pqh1CGAco8y5n3//e5M2gpZs2V9VAvO9ew3uKG2LyHBtye7xqTMT2pzXhSN4d0AKpOMMZug9UdM7OKWe1BNKy3w3GL/LQXfB2OlIgcFp/37R9dkXez5gkXdVx48EDLXpsGUiaNVHGTKtYhNo8YSr82gT3lVLs9S93Q2P8fp+sWxtV+cbfUZn8/vIsZCVrkl9tfmTEGoDMGmur0ozBvRbk1DnhTay69wjHt0HDuUlJs0qnRfjYy0YDUd4CvMjFVjsLBDowU3O0SB9FhYvex/B1UFqNbGj7JW2lw=
+  file:
+  -   ${LINUX_ARCHIVENAME}.tar.bz2
+  - ${WINDOWS_ARCHIVENAME}.tar.bz2
+  -  ${MACOSX_ARCHIVENAME}.tar.bz2
+  on:
+    tags: true
+before_install:
+- env
+- GHREPO_NAME=$(basename ${TRAVIS_REPO_SLUG})
+- LINUX_ARCHIVENAME=${GHREPO_NAME}_x86_64-pc-linux-gnu_${TRAVIS_TAG}
+- WINDOWS_ARCHIVENAME=${GHREPO_NAME}_i686-mingw32_${TRAVIS_TAG}
+- MACOSX_ARCHIVENAME=${GHREPO_NAME}_x86_64-apple-darwin_${TRAVIS_TAG}
+install:
+- go get -v github.com/mitchellh/gox
+- gox -build-toolchain -osarch=windows/386
+- gox -build-toolchain -osarch=darwin/amd64
+script:
+- GOOS=linux   GOARCH=amd64 go build -o  pkg/linux_amd64/${GHREPO_NAME}/${GHREPO_NAME}
+- GOOS=windows GOARCH=386   go build -o  pkg/windows_386/${GHREPO_NAME}/${GHREPO_NAME}
+- GOOS=darwin  GOARCH=amd64 go build -o pkg/darwin_amd64/${GHREPO_NAME}/${GHREPO_NAME}
+- cp Makefile.template  pkg/linux_amd64/${GHREPO_NAME}
+- cp Makefile.template  pkg/windows_386/${GHREPO_NAME}
+- cp Makefile.template pkg/darwin_amd64/${GHREPO_NAME}
+- bash -c "cd  pkg/linux_amd64/${GHREPO_NAME} && tar cvfj   ${PWD}/${LINUX_ARCHIVENAME}.tar.bz2 ."
+- bash -c "cd  pkg/windows_386/${GHREPO_NAME} && tar cvfj ${PWD}/${WINDOWS_ARCHIVENAME}.tar.bz2 ."
+- bash -c "cd pkg/darwin_amd64/${GHREPO_NAME} && tar cvfj  ${PWD}/${MACOSX_ARCHIVENAME}.tar.bz2 ."
