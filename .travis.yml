@@ -28,6 +28,6 @@ script:
 - cp Makefile.template  pkg/linux_amd64/${GHREPO_NAME}
 - cp Makefile.template  pkg/windows_386/${GHREPO_NAME}
 - cp Makefile.template pkg/darwin_amd64/${GHREPO_NAME}
-- bash -c "cd  pkg/linux_amd64/${GHREPO_NAME} && tar cvfj   ${PWD}/${LINUX_ARCHIVENAME}.tar.bz2 ."
-- bash -c "cd  pkg/windows_386/${GHREPO_NAME} && tar cvfj ${PWD}/${WINDOWS_ARCHIVENAME}.tar.bz2 ."
-- bash -c "cd pkg/darwin_amd64/${GHREPO_NAME} && tar cvfj  ${PWD}/${MACOSX_ARCHIVENAME}.tar.bz2 ."
+- bash -c "cd  pkg/linux_amd64/ && tar cvfj   ${PWD}/${LINUX_ARCHIVENAME}.tar.bz2 ${GHREPO_NAME}"
+- bash -c "cd  pkg/windows_386/ && tar cvfj ${PWD}/${WINDOWS_ARCHIVENAME}.tar.bz2 ${GHREPO_NAME}"
+- bash -c "cd pkg/darwin_amd64/ && tar cvfj  ${PWD}/${MACOSX_ARCHIVENAME}.tar.bz2 ${GHREPO_NAME}"
