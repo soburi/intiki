@@ -447,6 +447,9 @@ var (
 	uploader_path string
 	includes string
 	verbose int
+	woff bool
+	wall bool
+	wextra bool
 )
 
 func main() {
@@ -472,6 +475,9 @@ func main() {
 	flag.StringVar(&platform_version,	"platform.version", "",		"version")
 	flag.StringVar(&includes,		"includes", "",			"includes")
 	flag.IntVar(&verbose,			"verbose", 0,			"verbose level")
+	flag.BoolVar(&woff,			"w", false,			"verbose level")
+	flag.BoolVar(&wall,			"Wall", false,			"verbose level")
+	flag.BoolVar(&wextra,			"Wextra", false,		"verbose level")
 	flag.Parse()
 
 	flags := flag.Args()
@@ -501,6 +507,12 @@ func main() {
 		_, err = encode_to_file(genmf, cmd)
 		if err != nil { errors.New(err.Error() ) }
 
+		verbosefile := build_path + string(os.PathSeparator) + "genmf.verbose"
+		if wextra == true {
+			_, err = write_file(verbosefile, []byte{});
+			if err != nil { errors.New(err.Error() ) }
+		}
+
 	} else if recipe == "stage" {
 		genmf = build_path + string(os.PathSeparator) + "genmf.stage"
 
@@ -514,6 +526,13 @@ func main() {
 		numcores := os.Getenv("NUMBER_OF_PROCESSORS")
 
 		sys_args := []string{ "-j" + numcores, "-C",ToMsysSlash(build_path)}
+
+		verbosefile := build_path + string(os.PathSeparator) + "genmf.verbose"
+		_, err := os.Stat(verbosefile)
+		if !os.IsNotExist(err) {
+			sys_args = append(sys_args, "V=1");
+			os.Remove(verbosefile)
+		}
 
 		rep := regexp.MustCompile(`([0-9]*)(\s*)$`)
 		matches := rep.FindAllStringSubmatch(serial_port,-1)
