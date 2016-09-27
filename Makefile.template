@@ -98,8 +98,6 @@ $(CONTIKI_PROJECT).$(TARGET): $(TARGET_LIBFILES)
 
 include $(CONTIKI)/Makefile.include
 
-include $(ARDUINO_VARIANT_PATH)/Makefile.variant
-
 .PHONY: clean_arduino
 clean_arduino:
 	$(Q)rm -rf ./core $(ARDUINO_CORE_OBJS) $(ARDUINO_LIBRARIES_OBJS)  $(ARDUINO_SKETCH_OBJS) $(ARDUINO_CORE_A) $(ARDUINO_LIBRARIES_A) $(ARDUINO_SKETCH_A) $(ARDUINO_OBJECTDIR)
