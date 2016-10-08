@@ -258,7 +258,7 @@ func PreparePackage(pfpath string) error {
 
 		Verbose(0, "Preparing package ...\n")
 
-		url := mod.Url + "/archive/" + mod.Revision + ".zip"
+		url := strings.TrimSuffix(mod.Url, ".git") + "/archive/" + mod.Revision + ".zip"
 
 		Verbose(0, "Download %s ...\n", url)
 
