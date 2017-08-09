@@ -233,6 +233,19 @@ func unzip(src, dest string) error {
 	return nil
 }
 
+func CleanOldFiles(buildpath string) {
+	core_path := filepath.Join(buildpath, "core/")
+	_, err := os.Stat(core_path)
+	if !os.IsNotExist(err) {
+		os.RemoveAll(core_path)
+	}
+	libraries_path := filepath.Join(buildpath, "libraries/")
+	_, err = os.Stat(libraries_path)
+	if !os.IsNotExist(err) {
+		os.RemoveAll(libraries_path)
+	}
+}
+
 func PreparePackage(pfpath string) error {
 
 	mods := []Submodule{}
@@ -549,6 +562,7 @@ func main() {
 
 	} else if recipe == "preproc.includes" || recipe == "preproc.macros" {
 
+		CleanOldFiles(build_path)
 		err := PreparePackage(platform_path)
 		if err != nil {
 			panic(err)
