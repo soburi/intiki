@@ -34,6 +34,10 @@ ifneq ($(PROJECT_CONF_H),)
 CFLAGS += -DPROJECT_CONF_H=\"$(PROJECT_CONF_H)\"
 endif
 
+ifneq ($(PREINCLUDE_FILES),)
+$(foreach _,$(PREINCLUDE_FILES), $(eval CFLAGS += -include $_))
+endif
+
 ARDUINO_CORE_A = $(ARDUINO_ARCHIVE_FILE)
 ARDUINO_VARIANT_A = core/variant.a
 ARDUINO_LIBRARIES_A = libraries/libraries.a
