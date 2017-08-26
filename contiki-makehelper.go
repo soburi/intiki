@@ -183,7 +183,7 @@ func ToMsysSlash(p string) string {
 	}
 	if (s[1:3] == ":/") {
 		ss := "/"
-		ss += s[0:1]
+		ss += strings.ToLower(s[0:1])
 		ss += s[2:]
 		return ss
 	}
