@@ -1,8 +1,6 @@
 CONTIKI = $(ARDUINO_SYSTEM_PATH)/contiki
 
-CONTIKI_TARGET_MAIN = startup.c
-
-CONTIKI_PROJECT = main
+CONTIKI_PROJECT =  $(ARDUINO_PROJECT_NAME:.ino=)
 
 define _dirdepline =
 $1: | $(dir $1)
@@ -34,6 +32,10 @@ endif
 
 ifneq ($(PROJECT_CONF_H),)
 CFLAGS += -DPROJECT_CONF_H=\"$(PROJECT_CONF_H)\"
+endif
+
+ifneq ($(PREINCLUDE_FILES),)
+$(foreach _,$(PREINCLUDE_FILES), $(eval CFLAGS += -include $_))
 endif
 
 ARDUINO_CORE_A = $(ARDUINO_ARCHIVE_FILE)
@@ -121,12 +123,6 @@ ifeq ($(SIZE), )
 SIZE = $(subst gcc,size,$(CC))
 endif
 
-#.INTERMEDIATE: $(OBJECTDIR)/$(ARDUINO_CORE_PATH)/$(CONTIKI_TARGET_MAIN:.c=.o)
-$(OBJECTDIR)/$(CONTIKI_TARGET_MAIN:.c=.o): $(ARDUINO_OBJECTDIR)/$(ARDUINO_CORE_PATH)/$(CONTIKI_TARGET_MAIN:.c=.o)
-	$(Q)cp $< $@
-
-%.co: $(ARDUINO_OBJECTDIR)/$(ARDUINO_CORE_PATH)/%.o
-	$(Q)cp $< $@
 
 ifndef CUSTOM_RULE_CPP_TO_ARDUINO_OBJECTDIR_O
 ifdef CUSTOM_RULE_C_TO_OBJECTDIR_O

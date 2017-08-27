@@ -522,6 +522,18 @@ func main() {
 	} else if recipe == "echo" {
 		fmt.Println(strings.Join(flags, " ") )
 
+	} else if recipe == "genprjc" {
+		rep := regexp.MustCompile(`\.ino$`)
+		prjc := build_path + string(os.PathSeparator) + rep.ReplaceAllString(project_name, ".c")
+
+		_, err := os.Stat(prjc)
+		if os.IsNotExist(err) {
+			f, err2 := os.Create(prjc)
+			if err2 != nil { panic(err2) }
+			defer f.Close()
+			f.Write(([]byte)(""))
+		}
+
 	} else if recipe == "make" {
 		numcores := os.Getenv("NUMBER_OF_PROCESSORS")
 
