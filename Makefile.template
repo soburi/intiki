@@ -4,12 +4,6 @@ CONTIKI_TARGET_MAIN = startup.c
 
 CONTIKI_PROJECT = main
 
-define uniq =
-  $(eval seen :=)
-  $(foreach _,$1,$(if $(filter $_,${seen}),,$(eval seen += $_)))
-  ${seen}
-endef
-
 define _dirdepline =
 $1: | $(dir $1)
 $(if $(filter $(dir $1),core/ libraries/ sketch $(OBJECTDIR) $(ARDUINO_OBJECTDIR)),,
