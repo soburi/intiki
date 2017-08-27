@@ -13,6 +13,19 @@ define dirdeps =
 $(foreach _,$(1), $(eval $(call _dirdepline,$_)))
 endef
 
+define copy-coredir-rule =
+$1%.c.o: $2%.o
+	$(Q)cp $$< $$@
+$1%.cpp.o: $2%.o
+	$(Q)cp $$< $$@
+$1%.S.o: $2%.o
+	$(Q)cp $$< $$@
+endef
+
+define copy-coredir-rule-each =
+  $(foreach _,$1, $(eval $(call copy-coredir-rule,$(ARDUINO_BUILD_PATH)/$_,$(ARDUINO_OBJECTDIR)/$(ARDUINO_CORE_PATH)/$(subst core/,,$_))))
+endef
+
 ARDUINO_CFLAGS = ### <<<ARDUINO_CFLAGS>>> ###
 
 ARDUINO_CFLAGS += $(EXTRA_CFLAGS)
@@ -57,6 +70,11 @@ ARDUINO_LIBRARIES_SRCS = \
 
 ARDUINO_EXTRA_SRCS = 
 
+ARDUINO_CORE_SRCS_REL	= $(subst $(ARDUINO_CORE_PATH)/,, $(ARDUINO_CORES_SRCS))
+CORE_ARDUINO_CORE_OBJS	+= $(subst .c,.c.o,     $(addprefix $(ARDUINO_BUILD_PATH)/core/,$(filter %.c,$(ARDUINO_CORE_SRCS_REL) ) ) )
+CORE_ARDUINO_CORE_OBJS	+= $(subst .S,.S.o,     $(addprefix $(ARDUINO_BUILD_PATH)/core/,$(filter %.S,$(ARDUINO_CORE_SRCS_REL) ) ) )
+CORE_ARDUINO_CORE_OBJS	+= $(subst .cpp,.cpp.o, $(addprefix $(ARDUINO_BUILD_PATH)/core/,$(filter %.cpp,$(ARDUINO_CORE_SRCS_REL) ) ) )
+
 ARDUINO_VARIANT_OBJS   = $(subst .S,.o,$(subst .c,.o,$(subst .cpp,.o, $(addprefix $(ARDUINO_OBJECTDIR)/,$(ARDUINO_VARIANT_SRCS) ) ) ) )
 ARDUINO_CORE_OBJS      = $(subst .S,.o,$(subst .c,.o,$(subst .cpp,.o, $(addprefix $(ARDUINO_OBJECTDIR)/,$(ARDUINO_CORES_SRCS) ) ) ) )
 ARDUINO_LIBRARIES_OBJS = $(subst .S,.o,$(subst .c,.o,$(subst .cpp,.o, $(addprefix $(ARDUINO_OBJECTDIR)/,$(ARDUINO_LIBRARIES_SRCS) ) ) ) )
@@ -97,7 +115,7 @@ include $(CONTIKI)/Makefile.include
 
 .PHONY: clean_arduino
 clean_arduino:
-	$(Q)rm -rf ./core $(ARDUINO_CORE_OBJS) $(ARDUINO_LIBRARIES_OBJS)  $(ARDUINO_SKETCH_OBJS) $(ARDUINO_CORE_A) $(ARDUINO_VARIANT_A) $(ARDUINO_LIBRARIES_A) $(ARDUINO_SKETCH_A) $(ARDUINO_OBJECTDIR)
+	$(Q)rm -rf ./core $(ARDUINO_CORE_OBJS) $(ARDUINO_LIBRARIES_OBJS)  $(ARDUINO_SKETCH_OBJS) $(ARDUINO_VARIANT_A) $(ARDUINO_LIBRARIES_A) $(ARDUINO_SKETCH_A) $(ARDUINO_OBJECTDIR) $(filter $(ARDUINO_BUILD_PATH)%, $(abspath $(ARDUINO_CORE_A)))
 
 
 clean: clean_arduino
@@ -144,8 +162,10 @@ $(ARDUINO_OBJECTDIR)/%.o: %.c
 	@$(FINALIZE_DEPENDENCY)
 endif
 
-$(ARDUINO_CORE_A): $(ARDUINO_CORE_OBJS) $(ARDUINO_OBJECTDIR)/
-	$(Q)$(AR) rcf $@ $(ARDUINO_CORE_OBJS)
+$(eval $(call copy-coredir-rule-each ,$(call uniq,$(dir $(addprefix core,$(subst $(ARDUINO_CORE_PATH),,$(ARDUINO_CORES_SRCS)))))))
+
+$(ARDUINO_CORE_A): $(CORE_ARDUINO_CORE_OBJS) $(ARDUINO_OBJECTDIR)/
+	$(Q)$(AR) rcf $@ $(CORE_ARDUINO_CORE_OBJS)
 
 $(ARDUINO_VARIANT_A): $(ARDUINO_VARIANT_OBJS) $(ARDUINO_OBJECTDIR)/
 	$(Q)$(AR) rcf $@ $(ARDUINO_VARIANT_OBJS)
@@ -178,6 +198,7 @@ $(call dirdeps,$(ARDUINO_VARIANT_OBJS))
 $(call dirdeps,$(ARDUINO_LIBRARIES_OBJS))
 $(call dirdeps,$(ARDUINO_SKETCH_OBJS))
 $(call dirdeps,$(ARDUINO_EXTRA_OBJS))
+$(call dirdeps,$(CORE_ARDUINO_CORE_OBJS))
 
 .PHONY: size
 size: $(CONTIKI_PROJECT).$(TARGET)
