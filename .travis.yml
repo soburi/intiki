@@ -1,29 +1,33 @@
 language: go
 go: 1.3
-env: "PATH=/home/travis/gopath/bin:$PATH"
+env:
+  global:
+  - PATH=/home/travis/gopath/bin:$PATH
+  - GHREPO_NAME=$(basename ${TRAVIS_REPO_SLUG})
+  - LINUXX64_ARCHIVENAME=${GHREPO_NAME}_x86_64-pc-linux-gnu_${TRAVIS_TAG}
+  -  WINDOWS_ARCHIVENAME=${GHREPO_NAME}_i686-mingw32_${TRAVIS_TAG}
+  -   MACOSX_ARCHIVENAME=${GHREPO_NAME}_x86_64-apple-darwin_${TRAVIS_TAG}
+  - LINUXARM_ARCHIVENAME=${GHREPO_NAME}_arm-linux-gnueabihf_${TRAVIS_TAG}
+
 deploy:
   provider: releases
   api_key:
-    secure: J8PNmHob/t4qBc8pjLr3p0iY3GxEJq2ZF2MrLe0omEyPAdW3a2I1fk9NXzqGeMmnA0bnF2VF40t9k2TeMaqKE1eysm+XFAIRM+STqEM3u1yO3ueAaRZT66ttv4Bta4m68NtwOvrl2YOn+qWL+c2UTKVQAGt37k9a6HD+IEpnsYb9Pe74KE6MGOl9WN7WR1Y7fFpCOZtg134WgUcj3wtDkKhPJle6TlY8OQHb6DfgZABT2Uivlpz7ybMvveSK6h0RczKYukpcWG46KN64KvTVEsjB3XgeBn0D+n+0ZwGTAjTaVWi7yoavxMpmnF+jhSbWBU7AZKMS+5+4JCHqGwVJrU8b65n2C0KW8pT5LAezpctlWZIF/CTf40NjFYMz1WnMm4wSl5gx6Pqh1CGAco8y5n3//e5M2gpZs2V9VAvO9ew3uKG2LyHBtye7xqTMT2pzXhSN4d0AKpOMMZug9UdM7OKWe1BNKy3w3GL/LQXfB2OlIgcFp/37R9dkXez5gkXdVx48EDLXpsGUiaNVHGTKtYhNo8YSr82gT3lVLs9S93Q2P8fp+sWxtV+cbfUZn8/vIsZCVrkl9tfmTEGoDMGmur0ozBvRbk1DnhTay69wjHt0HDuUlJs0qnRfjYy0YDUd4CvMjFVjsLBDowU3O0SB9FhYvex/B1UFqNbGj7JW2lw=
+    secure: on5j2XaZtrmP6s0pUhJqEI0PDe4YZUJ/ombDK4dNIEXp9eRwhS6eS0kxUrMRk7a1DZz5NYK5jVJSIAQhU8aARBocXqg1+2TGOq8dUVaJx+Qtyaxw8AvQjMKluRsbgCCmX1dLFl08cB/zFvqhqD3azkvesLysCzS2EKjCA55sMu+BaFbKUxZpVLd1wdreVF8MO5r9Pv3BNSQg9pmyzF/TWGSC3Oz8mE/U0UVo3CPyDNtCYchBMYgrzCV5amQWzdNg7emSK6xN7fjDI2euoDZOP76/DRvjuz99wu8c/p7y6QnAJnBkt2YcAx/eYqOp/pMh9T8s47YX5BJv+kPRAFILlZbm5mqSP2tZduCoT2OnA1awVO8unNWvAFkU9oiUG7Xi7eS+Xa+W/wnu59Ll5LmgraKWf+3gi4wHIB/cc8HiC7O4jjgDRvIULiqt0vb7EGEDeCj6N+lh2n4RBCTC8SSib07W7QHJkHKAd09K8XCIKnhTyBFVHD0b4WQBZaFbnIfbu+W8C+5fZ4LFOp6UqErheJ6MTb215d1fsWf1D+xsDiGZfzDPdiIKVk1KeV2Y+MKcwtf7bMrCXzql1D3cdfREoPG0JF5rw4FPVpwCXQiZBnOZzWw0RC0OGNxeHHZeEUImQfzzXOzMKadXKIaFTRVA54bLF2wqfiSpXgtzSQAkBfc=
   file:
-  - ${LINUXX64_ARCHIVENAME}.tar.bz2
-  -  ${WINDOWS_ARCHIVENAME}.tar.bz2
-  -   ${MACOSX_ARCHIVENAME}.tar.bz2
-  - ${LINUXARM_ARCHIVENAME}.tar.bz2
+    - "${LINUXX64_ARCHIVENAME}.tar.bz2"
+    -  "${WINDOWS_ARCHIVENAME}.tar.bz2"
+    -   "${MACOSX_ARCHIVENAME}.tar.bz2"
+    - "${LINUXARM_ARCHIVENAME}.tar.bz2"
+  skip_cleanup: true
   on:
     tags: true
-before_install:
-- env
-- GHREPO_NAME=$(basename ${TRAVIS_REPO_SLUG})
-- LINUXX64_ARCHIVENAME=${GHREPO_NAME}_x86_64-pc-linux-gnu_${TRAVIS_TAG}
--  WINDOWS_ARCHIVENAME=${GHREPO_NAME}_i686-mingw32_${TRAVIS_TAG}
--   MACOSX_ARCHIVENAME=${GHREPO_NAME}_x86_64-apple-darwin_${TRAVIS_TAG}
-- LINUXARM_ARCHIVENAME=${GHREPO_NAME}_arm-linux-gnueabihf_${TRAVIS_TAG}
+
 install:
 - go get -v github.com/mitchellh/gox
 - gox -build-toolchain -osarch=windows/386
 - gox -build-toolchain -osarch=darwin/amd64
 - gox -build-toolchain -osarch=linux/arm
+
 script:
 - GOOS=linux   GOARCH=amd64 go build -o  pkg/linux_amd64/${GHREPO_NAME}/${GHREPO_NAME}
 - GOOS=windows GOARCH=386   go build -o  pkg/windows_386/${GHREPO_NAME}/${GHREPO_NAME}.exe
