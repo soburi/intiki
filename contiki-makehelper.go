@@ -524,6 +524,9 @@ func main() {
 
 	} else if recipe == "genprjc" {
 		rep := regexp.MustCompile(`\.ino$`)
+		if !rep.MatchString(project_name) {
+			rep = regexp.MustCompile(`\.pde$`)
+		}
 		prjc := build_path + string(os.PathSeparator) + rep.ReplaceAllString(project_name, ".c")
 
 		_, err := os.Stat(prjc)

@@ -1,6 +1,6 @@
 CONTIKI = $(ARDUINO_SYSTEM_PATH)/contiki
 
-CONTIKI_PROJECT =  $(ARDUINO_PROJECT_NAME:.ino=)
+CONTIKI_PROJECT =  $(patsubst %.pde,%,$(patsubst %.ino,%,$(ARDUINO_PROJECT_NAME)))
 
 define _dirdepline =
 $1: | $(dir $1)
