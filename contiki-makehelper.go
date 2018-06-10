@@ -446,6 +446,7 @@ var (
 	compiler_path string
 	uploader_path string
 	includes string
+	make_command string
 	verbose int
 	woff bool
 	wall bool
@@ -474,6 +475,7 @@ func main() {
 	flag.StringVar(&contiki_target_main,	"contiki.target.main", "",	"CONTIKI_TARGET_MAIN")
 	flag.StringVar(&platform_version,	"platform.version", "",		"version")
 	flag.StringVar(&includes,		"includes", "",			"includes")
+	flag.StringVar(&make_command,		"make.command", "make",		"make command executable")
 	flag.IntVar(&verbose,			"verbose", 0,			"verbose level")
 	flag.BoolVar(&woff,			"w", false,			"verbose level")
 	flag.BoolVar(&wall,			"Wall", false,			"verbose level")
@@ -559,7 +561,7 @@ func main() {
 
 		args := append(sys_args, flags...)
 
-		exitStatus := ExecCommand(os.Stdout, os.Stderr, "make", args...)
+		exitStatus := ExecCommand(os.Stdout, os.Stderr, make_command, args...)
 		os.Exit(exitStatus)
 
 	} else if recipe == "preproc.includes" || recipe == "preproc.macros" {
@@ -623,7 +625,7 @@ func main() {
 
 		var bufStdErr bytes.Buffer
 
-		exitStatus := ExecCommand(os.Stdout, &bufStdErr, "make", args...)
+		exitStatus := ExecCommand(os.Stdout, &bufStdErr, make_command, args...)
 
 		err = PrintErrIncludeLine(&bufStdErr)
 
