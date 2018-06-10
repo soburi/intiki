@@ -43,6 +43,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"strconv"
 	"syscall"
@@ -551,12 +552,27 @@ func main() {
 			os.Remove(verbosefile)
 		}
 
-		rep := regexp.MustCompile(`([0-9]*)(\s*)$`)
-		matches := rep.FindAllStringSubmatch(serial_port,-1)
+		if(serial_port != "") {
+			switch runtime.GOOS {
+			case "windows":
+				rep := regexp.MustCompile(`^(.*)([0-9]*)(\s*)$`)
+				matches := rep.FindAllStringSubmatch(serial_port,-1)
+				sys_args = append(sys_args, "USBDEVBASENAME=" + matches[0][1])
+				sys_args = append(sys_args, "MOTE=" + matches[0][2])
+			case "linux":
+				rep := regexp.MustCompile(`^(.*)([0-9]*)(\s*)$`)
+				matches := rep.FindAllStringSubmatch(serial_port,-1)
 
-		if matches != nil {
-			mote := matches[0][1]
-			sys_args = append(sys_args, "MOTE="+mote)
+				sys_args = append(sys_args, "USBDEVBASENAME=" + matches[0][1])
+				sys_args = append(sys_args, "MOTE=" + matches[0][2])
+			case "darwin":
+				rep := regexp.MustCompile(`^(/dev/.*-)(.*)(\s*)$`)
+				matches := rep.FindAllStringSubmatch(serial_port,-1)
+
+				devname := strings.Replace(matches[0][1], "/dev/cu.usbserial", "/dev/tty.usbserial", -1)
+				sys_args = append(sys_args, "USBDEVBASENAME=" + devname)
+				sys_args = append(sys_args, "MOTE=" + matches[0][2])
+			}
 		}
 
 		args := append(sys_args, flags...)
