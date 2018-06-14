@@ -555,12 +555,12 @@ func main() {
 		if(serial_port != "") {
 			switch runtime.GOOS {
 			case "windows":
-				rep := regexp.MustCompile(`^(.*)([0-9]*)(\s*)$`)
+				rep := regexp.MustCompile(`^(COM)([0-9]*)(\s*)$`)
 				matches := rep.FindAllStringSubmatch(serial_port,-1)
 				sys_args = append(sys_args, "USBDEVBASENAME=" + matches[0][1])
 				sys_args = append(sys_args, "MOTE=" + matches[0][2])
 			case "linux":
-				rep := regexp.MustCompile(`^(.*)([0-9]*)(\s*)$`)
+				rep := regexp.MustCompile(`^([^0-9]*)([0-9]*)$`)
 				matches := rep.FindAllStringSubmatch(serial_port,-1)
 
 				sys_args = append(sys_args, "USBDEVBASENAME=" + matches[0][1])
