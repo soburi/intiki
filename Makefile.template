@@ -43,7 +43,8 @@ ifneq ($(PLATFORM_CONF_H),)
 CFLAGS += -DPLATFORM_CONF_H=\"$(PLATFORM_CONF_H)\"
 endif
 
-ifneq ($(PROJECT_CONF_H),)
+PROJECT_CONF_H ?= sketch/project_conf.h
+ifneq ($(wildcard $(PROJECT_CONF_H)),)
 CFLAGS += -DPROJECT_CONF_H=\"$(PROJECT_CONF_H)\"
 endif
 
