@@ -1,5 +1,5 @@
 /*
- * Contiki-MakeHelper is free software; you can redistribute it and/or modify
+ * intiki is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
@@ -22,7 +22,7 @@
  * invalidate any other reasons why the executable file might be covered by
  * the GNU General Public License.
  *
- * Copyright 2016 TOKITA Hiroshi
+ * Copyright 2016-2018 Tokita, Hiroshi
  */
 
 package main
@@ -326,6 +326,7 @@ var (
 	woff bool
 	wall bool
 	wextra bool
+	version bool
 )
 
 func main() {
@@ -355,9 +356,17 @@ func main() {
 	flag.BoolVar(&woff,			"w", false,			"verbose level")
 	flag.BoolVar(&wall,			"Wall", false,			"verbose level")
 	flag.BoolVar(&wextra,			"Wextra", false,		"verbose level")
+	flag.BoolVar(&version,			"version", false,		"show program version")
 	flag.Parse()
 
 	flags := flag.Args()
+
+	if version == true {
+		fmt.Println("intiki " + GetVersion() )
+		fmt.Println("Copyright (C) 2016-2018 Tokita, Hiroshi")
+		fmt.Println("https://github.com/soburi/intiki")
+
+	}
 
 	if verbose == -1 {
 		verbose = 3
