@@ -25,7 +25,7 @@
  * Copyright 2016 TOKITA Hiroshi
  */
 
- package main
+package main
 
 import (
 	"bufio"
@@ -43,7 +43,6 @@ import (
 	"strings"
 	"strconv"
 	"syscall"
-	"unsafe"
 )
 
 type Command struct {
@@ -61,26 +60,8 @@ type Command struct {
 	SerialPort string `json:"serial_port"`
 }
 
-func OutputDebugString(msg string) {
-	if runtime.GOOS != "windows" {
-		return
-	}
-
-	pm := syscall.StringToUTF16Ptr(msg)
-	d, err := syscall.LoadDLL("kernel32.dll")
-	if err != nil {
-		return
-	}
-
-	p, err2 := d.FindProc("OutputDebugStringW")
-	if err2 != nil {
-		return
-	}
-	p.Call(uintptr(unsafe.Pointer(pm)))
-}
-
 func Verbose(level int, format string, args ...interface{}) {
-	OutputDebugString(fmt.Sprintf(format, args...))
+	DebugLog(fmt.Sprintf(format, args...))
 	if(level <= verbose) {
 		fmt.Fprintf(os.Stderr, format, args...);
 	}
@@ -267,7 +248,7 @@ func PrintErrIncludeLine(reader io.Reader) error {
 		}
 		fmt.Fprintf(os.Stderr, line)
 		fmt.Fprintf(os.Stderr, "\n")
-		OutputDebugString(line)
+		DebugLog(line)
 	}
 
 	return nil
@@ -532,19 +513,19 @@ func main() {
 		var bufStdErr bytes.Buffer
 		var bufStdOut bytes.Buffer
 
-		OutputDebugString(make_command + " " + strings.Join(args, " "))
+		DebugLog(make_command + " " + strings.Join(args, " "))
 
 		exitStatus := ExecCommand(&bufStdOut, &bufStdErr, make_command, args...)
 
 		if exitStatus != 0{
 			Verbose(3, "%s error %v", recipe, err)
-			OutputDebugString( fmt.Sprint("%s error %v", recipe, err) )
+			DebugLog( fmt.Sprint("%s error %v", recipe, err) )
 		}
 
 		scanner := bufio.NewScanner(&bufStdOut)
 		for scanner.Scan() {
 			line := scanner.Text()
-			OutputDebugString(line)
+			DebugLog(line)
 		}
 
 		err = PrintErrIncludeLine(&bufStdErr)
