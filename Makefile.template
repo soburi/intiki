@@ -68,6 +68,9 @@ ARDUINO_VARIANT_SRCS = \
 ARDUINO_LIBRARIES_SRCS = \
 ### <<<ARDUINO_LIBRARIES_SRCS>>> ###
 
+ARDUINO_SKETCH_SRCS = \
+### <<<ARDUINO_SKETCH_SRCS>>> ###
+
 ARDUINO_EXTRA_SRCS = 
 
 ARDUINO_CORE_SRCS_REL	= $(subst $(ARDUINO_CORE_PATH)/,, $(ARDUINO_CORES_SRCS))
@@ -78,7 +81,7 @@ CORE_ARDUINO_CORE_OBJS	+= $(subst .cpp,.cpp.o, $(addprefix $(ARDUINO_BUILD_PATH)
 ARDUINO_VARIANT_OBJS   = $(subst .S,.o,$(subst .c,.o,$(subst .cpp,.o, $(addprefix $(ARDUINO_OBJECTDIR)/,$(ARDUINO_VARIANT_SRCS) ) ) ) )
 ARDUINO_CORE_OBJS      = $(subst .S,.o,$(subst .c,.o,$(subst .cpp,.o, $(addprefix $(ARDUINO_OBJECTDIR)/,$(ARDUINO_CORES_SRCS) ) ) ) )
 ARDUINO_LIBRARIES_OBJS = $(subst .S,.o,$(subst .c,.o,$(subst .cpp,.o, $(addprefix $(ARDUINO_OBJECTDIR)/,$(ARDUINO_LIBRARIES_SRCS) ) ) ) )
-ARDUINO_SKETCH_OBJS    = $(ARDUINO_OBJECTDIR)/$(ARDUINO_BUILD_PATH)/sketch/$(ARDUINO_PROJECT_NAME).o
+ARDUINO_SKETCH_OBJS    = $(subst .S,.o,$(subst .c,.o,$(subst .cpp,.o, $(addprefix $(ARDUINO_OBJECTDIR)/,$(ARDUINO_SKETCH_SRCS) ) ) ) )
 ARDUINO_EXTRA_OBJS      = $(subst .S,.o,$(subst .c,.o,$(subst .cpp,.o, $(addprefix $(ARDUINO_OBJECTDIR)/,$(ARDUINO_EXTRA_SRCS) ) ) ) )
 
 ARDUINO_PREPROC_CFLAGS = $(filter-out -c -E -std=%, $(CFLAGS))

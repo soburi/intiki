@@ -550,6 +550,15 @@ func main() {
 			return ("\t" + strings.Join(libs_srcs, " \\\n\t") + "\n")
 		}
 
+		sketch_srcs := func() string {
+			sketches := select_command(commands, func (c Command) bool {
+				return (strings.HasSuffix(c.Recipe, ".o") && c.Stage == "sketch")
+			} )
+
+			sketchs_list := collect_string(sketches, func (c Command) string { return ToMsysSlash(c.Source) } )
+			return ("\t" + strings.Join(sketchs_list, " \\\n\t") + "\n")
+		}
+
 		sketch_flags := func() string {
 			flgs:= []string{}
 
@@ -594,6 +603,7 @@ func main() {
 		replace_map["ARDUINO_CORES_SRCS"] = cores_srcs()
 		replace_map["ARDUINO_VARIANT_SRCS"] = variant_srcs()
 		replace_map["ARDUINO_LIBRARIES_SRCS"] = libs_srcs()
+		replace_map["ARDUINO_SKETCH_SRCS"] = sketch_srcs()
 		replace_map["ARDUINO_VARIANT"] = variant_name
 		replace_map["ARDUINO_PLATFORM_VERSION"] = platform_version
 
