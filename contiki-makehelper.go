@@ -25,7 +25,7 @@
  * Copyright 2016 TOKITA Hiroshi
  */
 
- package main
+package main
 
 import (
 	"bufio"
@@ -61,6 +61,7 @@ type Command struct {
 }
 
 func Verbose(level int, format string, args ...interface{}) {
+	DebugLog(fmt.Sprintf(format, args...))
 	if(level <= verbose) {
 		fmt.Fprintf(os.Stderr, format, args...);
 	}
@@ -95,7 +96,7 @@ func decode_from_file(file string, ifc interface{}) error {
 	dec := json.NewDecoder(r)
 	dec.Decode(&ifc)
 
-	Verbose(5, "decode_from_file: %v\n", ifc)
+	//Verbose(5, "decode_from_file: %v\n", ifc)
 	return nil
 }
 
@@ -127,8 +128,8 @@ func contains(s []string, e string) bool {
 }
 
 func format_makefile(template string, replace map[string]string) string {
-	Verbose(3, "template: %v\n", template)
-	Verbose(3, "replace: %v\n", replace)
+	Verbose(6, "template: %v\n", template)
+	Verbose(6, "replace: %v\n", replace)
 
 	out := ""
 	_, err := os.Stat(template)
@@ -163,7 +164,7 @@ func format_makefile(template string, replace map[string]string) string {
 		panic(err)
 	}
 
-	Verbose(5, out)
+	//Verbose(5, out)
 	return out
 }
 
@@ -247,6 +248,7 @@ func PrintErrIncludeLine(reader io.Reader) error {
 		}
 		fmt.Fprintf(os.Stderr, line)
 		fmt.Fprintf(os.Stderr, "\n")
+		DebugLog(line)
 	}
 
 	return nil
@@ -268,7 +270,7 @@ func ExecCommand(ostrm io.Writer, estrm io.Writer, exe string, args... string) i
 
 
 	path = os.Getenv("PATH")
-	Verbose(1, "PATH=" + path + "\n")
+	Verbose(6, "PATH=" + path + "\n")
 	Verbose(0, exe + " " + strings.Join(args, " ") + "\n")
 
 	cmd := exec.Command(exe, args...)
@@ -290,7 +292,7 @@ func ExecCommand(ostrm io.Writer, estrm io.Writer, exe string, args... string) i
 		exitStatus = 0
 	}
 
-	if exitStatus != 0 || verbose > 3 {
+	if exitStatus != 0 || verbose > 6 {
 		Verbose(0, "exec.Command.Run err=%d\n", exitStatus)
 	}
 
@@ -349,7 +351,7 @@ func main() {
 	flag.StringVar(&platform_version,	"platform.version", "",		"version")
 	flag.StringVar(&includes,		"includes", "",			"includes")
 	flag.StringVar(&make_command,		"make.command", "make",		"make command executable")
-	flag.IntVar(&verbose,			"verbose", 0,			"verbose level")
+	flag.IntVar(&verbose,			"verbose", -1,			"verbose level")
 	flag.BoolVar(&woff,			"w", false,			"verbose level")
 	flag.BoolVar(&wall,			"Wall", false,			"verbose level")
 	flag.BoolVar(&wextra,			"Wextra", false,		"verbose level")
@@ -357,7 +359,20 @@ func main() {
 
 	flags := flag.Args()
 
-	Verbose(3, "recipe:%s stage:%s target:%s source:%s\n", recipe,stage,target,source)
+	if verbose == -1 {
+		verbose = 3
+		if woff == true {
+			verbose = 0
+		}
+		if wall == true {
+			verbose = 5
+		}
+		if wextra == true {
+			verbose = 9
+		}
+	}
+
+	Verbose(6, "recipe:%s stage:%s target:%s source:%s\n", recipe,stage,target,source)
 
 	genmf := strings.Replace(strings.TrimPrefix(target, build_path), "\\", "_", -1);
 	if recipe == "ar" {
@@ -381,12 +396,6 @@ func main() {
 
 		_, err = encode_to_file(genmf, cmd)
 		if err != nil { errors.New(err.Error() ) }
-
-		verbosefile := build_path + string(os.PathSeparator) + "genmf.verbose"
-		if wextra == true {
-			_, err = write_file(verbosefile, []byte{});
-			if err != nil { errors.New(err.Error() ) }
-		}
 
 	} else if recipe == "stage" {
 		genmf = build_path + string(os.PathSeparator) + "genmf.stage"
@@ -415,14 +424,7 @@ func main() {
 	} else if recipe == "make" {
 		numcores := os.Getenv("NUMBER_OF_PROCESSORS")
 
-		sys_args := []string{ "-j" + numcores, "-C",ToMsysSlash(build_path)}
-
-		verbosefile := build_path + string(os.PathSeparator) + "genmf.verbose"
-		_, err := os.Stat(verbosefile)
-		if !os.IsNotExist(err) {
-			sys_args = append(sys_args, "V=1");
-			os.Remove(verbosefile)
-		}
+		sys_args := []string{ "-j" + numcores, "-C", ToMsysSlash(build_path), "V=1" }
 
 		if(serial_port != "") {
 			switch runtime.GOOS {
@@ -455,6 +457,8 @@ func main() {
 	} else if recipe == "preproc.includes" || recipe == "preproc.macros" {
 
 		args := append([]string{ "-s", "-C", ToMsysSlash(build_path)})
+
+		verbose = 0
 
 		includes := []string{}
 
@@ -507,8 +511,22 @@ func main() {
 		write_file(build_path + string(os.PathSeparator) + "Makefile", []byte(out))
 
 		var bufStdErr bytes.Buffer
+		var bufStdOut bytes.Buffer
 
-		exitStatus := ExecCommand(os.Stdout, &bufStdErr, make_command, args...)
+		DebugLog(make_command + " " + strings.Join(args, " "))
+
+		exitStatus := ExecCommand(&bufStdOut, &bufStdErr, make_command, args...)
+
+		if exitStatus != 0{
+			Verbose(3, "%s error %v", recipe, err)
+			DebugLog( fmt.Sprint("%s error %v", recipe, err) )
+		}
+
+		scanner := bufio.NewScanner(&bufStdOut)
+		for scanner.Scan() {
+			line := scanner.Text()
+			DebugLog(line)
+		}
 
 		err = PrintErrIncludeLine(&bufStdErr)
 
