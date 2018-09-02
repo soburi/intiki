@@ -28,7 +28,6 @@
  package main
 
 import (
-	"archive/zip"
 	"bufio"
 	"bytes"
 	"encoding/json"
@@ -36,9 +35,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
-	"log"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -62,12 +58,6 @@ type Command struct {
 	ProjectName string `json:"project_name"`
 	ArchiveFile string `json:"archive_file"`
 	SerialPort string `json:"serial_port"`
-}
-
-type Submodule struct {
-	Path string `json:"path"`
-	Url  string `json:"url"`
-	Revision string `json:"revision"`
 }
 
 func Verbose(level int, format string, args ...interface{}) {
@@ -189,124 +179,6 @@ func ToMsysSlash(p string) string {
 		return ss
 	}
 	return s
-}
-
-func unzip(src, dest string) error {
-	r, err := zip.OpenReader(src)
-	if err != nil {
-		return err
-	}
-	defer r.Close()
-
-	for _, f := range r.File {
-		rc, err := f.Open()
-		if err != nil {
-			log.Fatal(err)
-			return err
-		}
-		defer rc.Close()
-
-		fnsplit:= strings.Split(f.Name, "/")
-		fnjoin := filepath.Join(fnsplit[1:]...)
-
-		path := filepath.Join(dest, fnjoin)
-
-		if f.FileInfo().IsDir() {
-			os.MkdirAll(path, f.Mode())
-			continue
-		}
-
-		f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
-		if err != nil {
-			log.Fatal(err)
-			return err
-		}
-		defer f.Close()
-
-		Verbose(3, "extact %s\n", path);
-		_, err = io.Copy(f, rc)
-		if err != nil {
-			log.Fatal(err)
-			return err
-		}
-	}
-
-	return nil
-}
-
-func PreparePackage(pfpath string) error {
-
-	mods := []Submodule{}
-
-	decode_from_file(filepath.Join(pfpath, "dist", "submodules.json"), &mods)
-	Verbose(3, "decode_from_file: %v\n", mods)
-
-	for _, mod := range mods {
-
-		pfmodpath := filepath.Join(filepath.FromSlash(pfpath), filepath.FromSlash(mod.Path) )
-		infos, err := ioutil.ReadDir(pfmodpath)
-
-		if err != nil { return err; }
-
-		for _, ifs := range infos {
-			Verbose(3, "%s\n", ifs.Name() )
-		}
-
-		if len(infos) != 0 {
-			Verbose(3, "%s are exists.\n", pfmodpath)
-			continue
-		}
-
-		Verbose(0, "Preparing package ...\n")
-
-		url := strings.TrimSuffix(mod.Url, ".git") + "/archive/" + mod.Revision + ".zip"
-
-		Verbose(0, "Download %s ...\n", url)
-
-		client := http.Client{}
-
-		req, err := http.NewRequest("GET", url, nil)
-		if err != nil {
-			log.Fatal(err)
-			errors.New(err.Error() )
-		}
-
-		resp, err := client.Do(req)
-		if err != nil {
-			log.Fatal(err)
-			errors.New(err.Error() )
-		}
-
-		defer resp.Body.Close()
-
-		body, err := ioutil.ReadAll(resp.Body);
-		if err != nil {
-			log.Fatal(err)
-			errors.New(err.Error() )
-		}
-
-		tmpfile, err := ioutil.TempFile(os.TempDir(), "contiki-makehelper")
-		if err != nil {
-			log.Fatal(err)
-			errors.New(err.Error() )
-		}
-		defer os.Remove(tmpfile.Name() )
-
-		tmpfile.Write(body)
-		tmpfile.Close()
-
-		Verbose(0, "Download complete.\n")
-
-		Verbose(0, "Extract to ...\n", filepath.Join(pfpath, mod.Path) )
-		err = unzip(tmpfile.Name(), filepath.Join(pfpath, mod.Path) )
-		if err != nil {
-			log.Fatal(err)
-			errors.New(err.Error() )
-		}
-		Verbose(0, "Extract complete.\n")
-	}
-
-	return nil
 }
 
 func GetLineOfFile(filename string, lineno int) (string, error) {
@@ -582,11 +454,6 @@ func main() {
 
 	} else if recipe == "preproc.includes" || recipe == "preproc.macros" {
 
-		err := PreparePackage(platform_path)
-		if err != nil {
-			panic(err)
-		}
-
 		args := append([]string{ "-s", "-C", ToMsysSlash(build_path)})
 
 		includes := []string{}
@@ -615,7 +482,7 @@ func main() {
 		replace_map := map[string]string {}
 
 		preprocfile := build_path + string(os.PathSeparator) + "genmf.preproc"
-		_, err = os.Stat(preprocfile)
+		_, err := os.Stat(preprocfile)
 		if !os.IsNotExist(err) {
 			decode_from_file(preprocfile, &replace_map);
 		}
