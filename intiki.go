@@ -37,6 +37,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -313,6 +314,7 @@ var (
 	serial_port string
 	stage string
 	template string
+	makefile string
 	variant_name string
 	platform_version string
 
@@ -346,6 +348,7 @@ func main() {
 	flag.StringVar(&target,			"target", "",			"target file")
 	flag.StringVar(&source,			"source", "",			"source file")
 	flag.StringVar(&template,		"template", "",			"Makefile template")
+	flag.StringVar(&makefile,		"makefile", "",			"Makefile name")
 	flag.StringVar(&cmds_path,		"build.usr.bin.path", "",	"target object")
 	flag.StringVar(&compiler_path,		"build.compiler.path", "",	"cpmpiler path")
 	flag.StringVar(&uploader_path,		"build.uploader.path", "",	"uploader path")
@@ -475,7 +478,7 @@ func main() {
 
 	} else if recipe == "preproc.includes" || recipe == "preproc.macros" {
 
-		args := append([]string{ "-s", "-C", ToMsysSlash(build_path)})
+		args := []string{} //append([]string{ "-s", "-C", ToMsysSlash(build_path)})
 
 		verbose = 0
 
@@ -522,10 +525,23 @@ func main() {
 
 		_, err = encode_to_file(preprocfile, replace_map)
 
-		out := format_makefile(template, replace_map)
+		out := format_makefile(filepath.ToSlash(template), replace_map)
 
-		os.Remove(build_path + string(os.PathSeparator) + "Makefile")
-		write_file(build_path + string(os.PathSeparator) + "Makefile", []byte(out))
+		makefilename := filepath.ToSlash(makefile)
+		makedir := path.Dir(makefilename)
+		if makefilename == "" {
+			makefilename = build_path + strings.Replace(path.Base(template), ".template", "", -1)
+		} else if makedir == "" {
+			makedir = build_path
+		}
+		err = os.MkdirAll(makedir, os.ModePerm)
+
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+
+		os.Remove(makefilename)
+		write_file(makefilename, []byte(out))
 
 		var bufStdErr bytes.Buffer
 		var bufStdOut bytes.Buffer
@@ -644,8 +660,22 @@ func main() {
 
 		out := format_makefile(template, replace_map)
 
-		os.Remove(build_path + string(os.PathSeparator) + "Makefile")
-		write_file(build_path + string(os.PathSeparator) + "Makefile", []byte(out))
+		makefilename := filepath.ToSlash(makefile)
+		makedir := path.Dir(makefilename)
+		if makefilename == "" {
+			makefilename = build_path + string(os.PathSeparator) + strings.Replace(path.Base(template), ".template", "", -1)
+		} else if makedir == "" || makedir == "." {
+			makedir = build_path
+		}
+
+		err = os.MkdirAll(makedir, os.ModePerm)
+
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+
+		os.Remove(makefilename)
+		write_file(makefilename, []byte(out))
 
 		if verbose < 10  {
 			for _, f := range genmfs {
