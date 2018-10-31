@@ -433,7 +433,7 @@ func main() {
 	} else if recipe == "make" {
 		numcores := os.Getenv("NUMBER_OF_PROCESSORS")
 
-		sys_args := []string{ "-j" + numcores, "-C", ToMsysSlash(build_path), "V=1" }
+		sys_args := []string{ "-j" + numcores }
 
 		if(serial_port != "") {
 			switch runtime.GOOS {
@@ -489,8 +489,6 @@ func main() {
 			}
 			includes = append(includes, f)
 		}
-
-		args = append(args, recipe)
 
 		replace_map := map[string]string {}
 
