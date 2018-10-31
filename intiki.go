@@ -322,6 +322,7 @@ var (
 	uploader_path string
 	includes string
 	make_command string
+	make_processnum int
 	verbose int
 	woff bool
 	wall bool
@@ -352,6 +353,7 @@ func main() {
 	flag.StringVar(&platform_version,	"platform.version", "",		"version")
 	flag.StringVar(&includes,		"includes", "",			"includes")
 	flag.StringVar(&make_command,		"make.command", "make",		"make command executable")
+	flag.IntVar(&make_processnum,		"make.processnum", -1,		"make process number")
 	flag.IntVar(&verbose,			"verbose", -1,			"verbose level")
 	flag.BoolVar(&woff,			"w", false,			"verbose level")
 	flag.BoolVar(&wall,			"Wall", false,			"verbose level")
@@ -431,9 +433,17 @@ func main() {
 		}
 
 	} else if recipe == "make" {
-		numcores := os.Getenv("NUMBER_OF_PROCESSORS")
+		makeflags := os.Getenv("MAKEFLAGS")
 
-		sys_args := []string{ "-j" + numcores }
+		if make_processnum == -1 {
+			numcores := os.Getenv("NUMBER_OF_PROCESSORS")
+			makeflags = makeflags + " -j" + numcores
+		} else {
+			makeflags = makeflags + " -j" + strconv.Itoa(make_processnum)
+		}
+		os.Setenv("MAKEFLAGS", makeflags)
+
+		sys_args := []string{}
 
 		if(serial_port != "") {
 			switch runtime.GOOS {
