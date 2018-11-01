@@ -658,20 +658,24 @@ func main() {
 
 		out := format_makefile(template, replace_map)
 
-		makefilename := makefile
-		makedir := path.Dir(makefile)
-		DebugLog(makedir)
-		if makefile == "" {
+		makefilename := filepath.ToSlash(makefile)
+		makedir := path.Dir(makefilename)
+		if makefilename == "" {
 			makefilename = build_path + strings.Replace(path.Base(template), ".template", "", -1)
 		} else if makedir == "" {
 			makedir = build_path
 		}
-		os.MkdirAll(makedir, os.ModePerm)
+		err = os.MkdirAll(makedir, os.ModePerm)
 
-		DebugLog(makefilename)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+
 		os.Remove(makefilename)
 		write_file(makefilename, []byte(out))
 
+	} else if recipe == "cleangenmf" {
+		genmfs, _ := filepath.Glob(build_path + string(os.PathSeparator) + "*.genmf")
 		if verbose < 10  {
 			for _, f := range genmfs {
 				os.Remove(f)
