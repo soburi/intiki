@@ -324,6 +324,7 @@ var (
 	uploader_path string
 	includes string
 	make_command string
+	make_dir string
 	make_processnum int
 	verbose int
 	woff bool
@@ -356,6 +357,7 @@ func main() {
 	flag.StringVar(&platform_version,	"platform.version", "",		"version")
 	flag.StringVar(&includes,		"includes", "",			"includes")
 	flag.StringVar(&make_command,		"make.command", "make",		"make command executable")
+	flag.StringVar(&make_dir,		"make.dir", ".",		"make execute dir")
 	flag.IntVar(&make_processnum,		"make.processnum", -1,		"make process number")
 	flag.IntVar(&verbose,			"verbose", -1,			"verbose level")
 	flag.BoolVar(&woff,			"w", false,			"verbose level")
@@ -471,10 +473,10 @@ func main() {
 			}
 		}
 
-		os.Setenv("ZEPHYR_BASE", system_path + "\\zephyr")
-
 		args := append(sys_args, flags...)
 
+
+		os.Chdir(make_dir)
 		exitStatus := ExecCommand(os.Stdout, os.Stderr, make_command, args...)
 		os.Exit(exitStatus)
 
