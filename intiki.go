@@ -471,6 +471,8 @@ func main() {
 			}
 		}
 
+		os.Setenv("ZEPHYR_BASE", system_path + "\\zephyr")
+
 		args := append(sys_args, flags...)
 
 		exitStatus := ExecCommand(os.Stdout, os.Stderr, make_command, args...)
