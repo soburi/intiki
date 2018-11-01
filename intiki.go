@@ -577,8 +577,8 @@ func main() {
 				return (strings.HasSuffix(c.Recipe, ".o") && c.Stage == "core" && strings.HasPrefix(c.Source, core_path) )
 			} )
 
-			cores_list := collect_string(cores_srcs, func (c Command) string { return ToMsysSlash(c.Source) } )
-			return ("\t" + strings.Join(cores_list, " \\\n\t") + "\n")
+			cores_list := collect_string(cores_srcs, func (c Command) string { return filepath.ToSlash(c.Source) } )
+			return ("\t" + strings.Join(cores_list, " \t") )
 		}
 
 		variant_srcs := func() string {
@@ -586,8 +586,8 @@ func main() {
 				return (strings.HasSuffix(c.Recipe, ".o") && c.Stage == "core" && strings.HasPrefix(c.Source, variant_path) )
 			} )
 
-			var_list := collect_string(var_srcs, func (c Command) string { return ToMsysSlash(c.Source) } )
-			return ("\t" + strings.Join(var_list, " \\\n\t") + "\n")
+			var_list := collect_string(var_srcs, func (c Command) string { return filepath.ToSlash(c.Source) } )
+			return ("\t" + strings.Join(var_list, " \t") )
 		}
 
 		libs_srcs := func() string {
@@ -595,8 +595,8 @@ func main() {
 				return (strings.HasSuffix(c.Recipe, ".o") && c.Stage == "libraries")
 			})
 
-			libs_srcs := collect_string(libcmds, func (c Command) string { return ToMsysSlash(c.Source) } )
-			return ("\t" + strings.Join(libs_srcs, " \\\n\t") + "\n")
+			libs_srcs := collect_string(libcmds, func (c Command) string { return filepath.ToSlash(c.Source) } )
+			return ("\t" + strings.Join(libs_srcs, " \t") )
 		}
 
 		sketch_srcs := func() string {
@@ -604,8 +604,8 @@ func main() {
 				return (strings.HasSuffix(c.Recipe, ".o") && c.Stage == "sketch")
 			} )
 
-			sketchs_list := collect_string(sketches, func (c Command) string { return ToMsysSlash(c.Source) } )
-			return ("\t" + strings.Join(sketchs_list, " \\\n\t") + "\n")
+			sketchs_list := collect_string(sketches, func (c Command) string { return filepath.ToSlash(c.Source) } )
+			return ("\t" + strings.Join(sketchs_list, " \t") )
 		}
 
 		sketch_flags := func() string {
