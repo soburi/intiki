@@ -657,12 +657,18 @@ func main() {
 		out := format_makefile(template, replace_map)
 
 		makefilename := makefile
+		makedir := path.Dir(makefile)
+		DebugLog(makedir)
 		if makefile == "" {
-			makefilename = strings.Replace(path.Base(template), ".template", "", -1)
+			makefilename = build_path + strings.Replace(path.Base(template), ".template", "", -1)
+		} else if makedir == "" {
+			makedir = build_path
 		}
+		os.MkdirAll(makedir, os.ModePerm)
 
-		os.Remove(build_path  + string(os.PathSeparator) + makefilename)
-		write_file(build_path + string(os.PathSeparator) + makefilename, []byte(out))
+		DebugLog(makefilename)
+		os.Remove(makefilename)
+		write_file(makefilename, []byte(out))
 
 		if verbose < 10  {
 			for _, f := range genmfs {
