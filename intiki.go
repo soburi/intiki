@@ -630,6 +630,71 @@ func main() {
 			return strings.Join(flgs, " ")
 		}
 
+		include_dirs := func() string {
+			flgs:= []string{}
+
+			libcmds := select_command(commands, func (c Command) bool {
+				return (strings.HasSuffix(c.Recipe, ".o") && c.Stage == "sketch")
+			})
+
+
+			for _, cmd := range libcmds {
+				for _, flg := range cmd.Flags {
+					if !contains(flgs, flg) {
+						if (strings.HasPrefix(flg, "-I") ) {
+							flg = filepath.ToSlash(flg[2:])
+							flgs = append(flgs, flg)
+						}
+					}
+				}
+			}
+
+			return strings.Join(flgs, " ")
+		}
+
+		libs_dirs := func() string {
+			flgs:= []string{}
+
+			libcmds := select_command(commands, func (c Command) bool {
+				return (strings.HasSuffix(c.Recipe, ".o") && c.Stage == "sketch")
+			})
+
+
+			for _, cmd := range libcmds {
+				for _, flg := range cmd.Flags {
+					if !contains(flgs, flg) {
+						if (strings.HasPrefix(flg, "-L") ) {
+							flg = filepath.ToSlash(flg[2:])
+							flgs = append(flgs, flg)
+						}
+					}
+				}
+			}
+
+			return strings.Join(flgs, " ")
+		}
+
+		define_macros := func() string {
+			flgs:= []string{}
+
+			libcmds := select_command(commands, func (c Command) bool {
+				return (strings.HasSuffix(c.Recipe, ".o") && c.Stage == "sketch")
+			})
+
+
+			for _, cmd := range libcmds {
+				for _, flg := range cmd.Flags {
+					if !contains(flgs, flg) {
+						if (strings.HasPrefix(flg, "-D") ) {
+							flgs = append(flgs, flg)
+						}
+					}
+				}
+			}
+
+			return strings.Join(flgs, " ")
+		}
+
 		ldcmd := select_command(commands, func (c Command) bool {
 			return (c.Recipe == "ld")
 		})[0]
@@ -655,6 +720,9 @@ func main() {
 		replace_map["ARDUINO_SKETCH_SRCS"] = sketch_srcs()
 		replace_map["ARDUINO_VARIANT"] = variant_name
 		replace_map["ARDUINO_PLATFORM_VERSION"] = platform_version
+		replace_map["ARDUINO_INCLUDE_DIRS"] = include_dirs()
+		replace_map["ARDUINO_LIBRARY_DIRS"] = libs_dirs()
+		replace_map["ARDUINO_DEFINE_MACROS"] = define_macros()
 
 		out := format_makefile(template, replace_map)
 
