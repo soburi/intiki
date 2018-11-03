@@ -483,8 +483,11 @@ func main() {
 		verbose = 0
 
 		includes := []string{}
+		include_dirs := []string{}
+		def_macros := []string{}
 
 		flaggroup := ""
+		d := ""
 		for _, f := range flags {
 			if f == "-includes" || f == "-make-args" {
 				flaggroup = f
@@ -496,11 +499,18 @@ func main() {
 				continue
 			} else if flaggroup == "-includes" {
 				if strings.HasPrefix(f,"-I") {
+					d = filepath.ToSlash(f[2:])
 					f = "-I" + ToMsysSlash(f[2:])
 				}
 				includes = append(includes, f)
+				include_dirs = append(include_dirs, d)
+			} else {
+				if strings.HasPrefix(f, "-D") {
+					def_macros = append(def_macros, f[2:])
+				}
 			}
 			includes = append(includes, f)
+			include_dirs = append(include_dirs, d)
 		}
 
 		replace_map := map[string]string {}
@@ -522,6 +532,24 @@ func main() {
 			replace_map["ARDUINO_PREPROC_MACROS_SOURCE"]   = "\t" + ToMsysSlash(source)
 			replace_map["ARDUINO_PREPROC_MACROS_OUTFILE"]   = "\t" + ToMsysSlash(target)
 		}
+
+		replace_map["ARDUINO_PREPROC_MACROS_INCLUDE_DIRS"]    = strings.Join(include_dirs, " ")
+		replace_map["ARDUINO_PREPROC_MACROS_DEFINE_MACROS"]    = strings.Join(def_macros, " ")
+
+		replace_map["ARDUINO_CFLAGS"] = ""
+		replace_map["ARDUINO_PROJECT_NAME"] = ""
+		replace_map["ARDUINO_BUILD_PATH"] = ""
+		replace_map["ARDUINO_CORE_PATH"] = ""
+		replace_map["ARDUINO_ARCHIVE_FILE"] = ""
+		replace_map["ARDUINO_CORES_SRCS"] = ""
+		replace_map["ARDUINO_VARIANT_SRCS"] = ""
+		replace_map["ARDUINO_LIBRARIES_SRCS"] = ""
+		replace_map["ARDUINO_SKETCH_SRCS"] = ""
+		replace_map["ARDUINO_VARIANT"] = variant_name
+		replace_map["ARDUINO_PLATFORM_VERSION"] = platform_version
+		replace_map["ARDUINO_INCLUDE_DIRS"] = ""
+		replace_map["ARDUINO_LIBRARY_DIRS"] = ""
+		replace_map["ARDUINO_DEFINE_MACROS"] = ""
 
 		_, err = encode_to_file(preprocfile, replace_map)
 
@@ -632,6 +660,71 @@ func main() {
 			return strings.Join(flgs, " ")
 		}
 
+		include_dirs := func() string {
+			flgs:= []string{}
+
+			libcmds := select_command(commands, func (c Command) bool {
+				return (strings.HasSuffix(c.Recipe, ".o") && c.Stage == "sketch")
+			})
+
+
+			for _, cmd := range libcmds {
+				for _, flg := range cmd.Flags {
+					if !contains(flgs, flg) {
+						if (strings.HasPrefix(flg, "-I") ) {
+							flg = ToMsysSlash(flg[2:])
+							flgs = append(flgs, flg)
+						}
+					}
+				}
+			}
+
+			return strings.Join(flgs, " ")
+		}
+
+		libs_dirs := func() string {
+			flgs:= []string{}
+
+			libcmds := select_command(commands, func (c Command) bool {
+				return (strings.HasSuffix(c.Recipe, ".o") && c.Stage == "sketch")
+			})
+
+
+			for _, cmd := range libcmds {
+				for _, flg := range cmd.Flags {
+					if !contains(flgs, flg) {
+						if (strings.HasPrefix(flg, "-L") ) {
+							flg = ToMsysSlash(flg[2:])
+							flgs = append(flgs, flg)
+						}
+					}
+				}
+			}
+
+			return strings.Join(flgs, " ")
+		}
+
+		define_macros := func() string {
+			flgs:= []string{}
+
+			libcmds := select_command(commands, func (c Command) bool {
+				return (strings.HasSuffix(c.Recipe, ".o") && c.Stage == "sketch")
+			})
+
+
+			for _, cmd := range libcmds {
+				for _, flg := range cmd.Flags {
+					if !contains(flgs, flg) {
+						if (strings.HasPrefix(flg, "-D") ) {
+							flgs = append(flgs, flg)
+						}
+					}
+				}
+			}
+
+			return strings.Join(flgs, " ")
+		}
+
 		ldcmd := select_command(commands, func (c Command) bool {
 			return (c.Recipe == "ld")
 		})[0]
@@ -657,7 +750,14 @@ func main() {
 		replace_map["ARDUINO_SKETCH_SRCS"] = sketch_srcs()
 		replace_map["ARDUINO_VARIANT"] = variant_name
 		replace_map["ARDUINO_PLATFORM_VERSION"] = platform_version
-
+		replace_map["ARDUINO_INCLUDE_DIRS"] = include_dirs()
+		replace_map["ARDUINO_LIBRARY_DIRS"] = libs_dirs()
+		replace_map["ARDUINO_DEFINE_MACROS"] = define_macros()
+		replace_map["ARDUINO_PREPROC_MACROS_FLAGS"]    = ""
+		replace_map["ARDUINO_PREPROC_MACROS_SOURCE"]   = ""
+		replace_map["ARDUINO_PREPROC_MACROS_OUTFILE"]   = ""
+		replace_map["ARDUINO_PREPROC_MACROS_INCLUDE_DIRS"]    = ""
+		replace_map["ARDUINO_PREPROC_MACROS_DEFINE_MACROS"]    = ""
 		out := format_makefile(template, replace_map)
 
 		makefilename := filepath.ToSlash(makefile)
