@@ -146,6 +146,8 @@ func format_makefile(template string, replace map[string]string) string {
 		rep := regexp.MustCompile(`(###\s*<<<)([^>\s]*)(>>>\s*###)`)
 		matches := rep.FindAllStringSubmatch(line,-1)
 
+		DebugLog("149")
+
 		if matches != nil {
 			found := false
 
@@ -161,6 +163,8 @@ func format_makefile(template string, replace map[string]string) string {
 		}
 		out = out + line + "\n"
 	}
+	DebugLog("166")
+	DebugLog(out)
 	if err := scanner.Err(); err != nil {
 		panic(err)
 	}
@@ -482,13 +486,16 @@ func main() {
 
 	} else if recipe == "preproc.includes" || recipe == "preproc.macros" {
 
-		args := append([]string{ "-s", "-C", ToMsysSlash(build_path)})
+		args := []string{} //append([]string{ "-s", "-C", ToMsysSlash(build_path)})
 
 		verbose = 0
 
 		includes := []string{}
+		include_dirs := []string{}
+		def_macros := []string{}
 
 		flaggroup := ""
+		d := ""
 		for _, f := range flags {
 			if f == "-includes" || f == "-make-args" {
 				flaggroup = f
@@ -500,14 +507,21 @@ func main() {
 				continue
 			} else if flaggroup == "-includes" {
 				if strings.HasPrefix(f,"-I") {
+					d = filepath.ToSlash(f[2:])
 					f = "-I" + ToMsysSlash(f[2:])
 				}
 				includes = append(includes, f)
+				include_dirs = append(include_dirs, d)
+			} else {
+				if strings.HasPrefix(f, "-D") {
+					def_macros = append(def_macros, f[2:])
+				}
 			}
 			includes = append(includes, f)
+			include_dirs = append(include_dirs, d)
 		}
 
-		args = append(args, recipe)
+		//args = append(args, recipe)
 
 		replace_map := map[string]string {}
 
@@ -525,21 +539,32 @@ func main() {
 			replace_map["ARDUINO_PREPROC_INCLUDES_OUTFILE"] = "\t" + ToMsysSlash(target)
 		} else {
 			replace_map["ARDUINO_PREPROC_MACROS_FLAGS"]    = "\t" + strings.Join(includes, " ")
-			replace_map["ARDUINO_PREPROC_MACROS_SOURCE"]   = "\t" + ToMsysSlash(source)
+			replace_map["ARDUINO_PREPROC_MACROS_SOURCE"]   = "\t" + filepath.ToSlash(source)
 			replace_map["ARDUINO_PREPROC_MACROS_OUTFILE"]   = "\t" + ToMsysSlash(target)
 		}
 
+		replace_map["ARDUINO_PREPROC_MACROS_INCLUDE_DIRS"]    = strings.Join(include_dirs, " ")
+		replace_map["ARDUINO_PREPROC_MACROS_DEFINE_MACROS"]    = strings.Join(def_macros, " ")
+
 		_, err = encode_to_file(preprocfile, replace_map)
 
-		out := format_makefile(template, replace_map)
+		out := format_makefile(filepath.ToSlash(template), replace_map)
 
-		makefilename := makefile
-		if makefile == "" {
-			makefilename = strings.Replace(path.Base(template), ".template", "", -1)
+		makefilename := filepath.ToSlash(makefile)
+		makedir := path.Dir(makefilename)
+		if makefilename == "" {
+			makefilename = build_path + strings.Replace(path.Base(template), ".template", "", -1)
+		} else if makedir == "" {
+			makedir = build_path
+		}
+		err = os.MkdirAll(makedir, os.ModePerm)
+
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
 		}
 
-		os.Remove(build_path  + string(os.PathSeparator) + makefilename)
-		write_file(build_path + string(os.PathSeparator) + makefilename, []byte(out))
+		os.Remove(makefilename)
+		write_file(makefilename, []byte(out))
 
 		var bufStdErr bytes.Buffer
 		var bufStdOut bytes.Buffer
