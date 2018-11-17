@@ -546,6 +546,21 @@ func main() {
 		replace_map["ARDUINO_PREPROC_MACROS_INCLUDE_DIRS"]    = strings.Join(include_dirs, " ")
 		replace_map["ARDUINO_PREPROC_MACROS_DEFINE_MACROS"]    = strings.Join(def_macros, " ")
 
+		replace_map["ARDUINO_CFLAGS"] = ""
+		replace_map["ARDUINO_PROJECT_NAME"] = ""
+		replace_map["ARDUINO_BUILD_PATH"] = ""
+		replace_map["ARDUINO_CORE_PATH"] = ""
+		replace_map["ARDUINO_ARCHIVE_FILE"] = ""
+		replace_map["ARDUINO_CORES_SRCS"] = ""
+		replace_map["ARDUINO_VARIANT_SRCS"] = ""
+		replace_map["ARDUINO_LIBRARIES_SRCS"] = ""
+		replace_map["ARDUINO_SKETCH_SRCS"] = ""
+		replace_map["ARDUINO_VARIANT"] = variant_name
+		replace_map["ARDUINO_PLATFORM_VERSION"] = platform_version
+		replace_map["ARDUINO_INCLUDE_DIRS"] = ""
+		replace_map["ARDUINO_LIBRARY_DIRS"] = ""
+		replace_map["ARDUINO_DEFINE_MACROS"] = ""
+
 		_, err = encode_to_file(preprocfile, replace_map)
 
 		out := format_makefile(filepath.ToSlash(template), replace_map)
@@ -748,7 +763,11 @@ func main() {
 		replace_map["ARDUINO_INCLUDE_DIRS"] = include_dirs()
 		replace_map["ARDUINO_LIBRARY_DIRS"] = libs_dirs()
 		replace_map["ARDUINO_DEFINE_MACROS"] = define_macros()
-
+		replace_map["ARDUINO_PREPROC_MACROS_FLAGS"]    = ""
+		replace_map["ARDUINO_PREPROC_MACROS_SOURCE"]   = ""
+		replace_map["ARDUINO_PREPROC_MACROS_OUTFILE"]   = ""
+		replace_map["ARDUINO_PREPROC_MACROS_INCLUDE_DIRS"]    = ""
+		replace_map["ARDUINO_PREPROC_MACROS_DEFINE_MACROS"]    = ""
 		out := format_makefile(template, replace_map)
 
 		makefilename := filepath.ToSlash(makefile)
