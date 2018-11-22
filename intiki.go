@@ -786,8 +786,6 @@ func main() {
 		os.Remove(makefilename)
 		write_file(makefilename, []byte(out))
 
-	} else if recipe == "cleangenmf" {
-		genmfs, _ := filepath.Glob(build_path + string(os.PathSeparator) + "*.genmf")
 		if verbose < 10  {
 			for _, f := range genmfs {
 				os.Remove(f)
