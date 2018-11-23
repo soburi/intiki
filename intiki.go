@@ -482,6 +482,11 @@ func main() {
 
 		verbose = 0
 
+		toslash := ToMsysSlash
+		if false {
+			toslash = filepath.ToSlash
+		}
+
 		includes := []string{}
 		include_dirs := []string{}
 		def_macros := []string{}
@@ -499,8 +504,8 @@ func main() {
 				continue
 			} else if flaggroup == "-includes" {
 				if strings.HasPrefix(f,"-I") {
-					d = filepath.ToSlash(f[2:])
-					f = "-I" + ToMsysSlash(f[2:])
+					d = toslash(f[2:])
+					f = "-I" + toslash(f[2:])
 				}
 				includes = append(includes, f)
 				include_dirs = append(include_dirs, d)
@@ -523,16 +528,16 @@ func main() {
 			decode_from_file(preprocfile, &replace_map);
 		}
 
-		replace_map["ARDUINO_SYSTEM_PATH"] = ToMsysSlash(system_path)
-		replace_map["ARDUINO_VARIANT_PATH"] = ToMsysSlash(variant_path)
+		replace_map["ARDUINO_SYSTEM_PATH"] = toslash(system_path)
+		replace_map["ARDUINO_VARIANT_PATH"] = toslash(variant_path)
 		if(recipe == "preproc.includes") {
 			replace_map["ARDUINO_PREPROC_INCLUDES_FLAGS"]  = "\t" + strings.Join(includes, " ")
-			replace_map["ARDUINO_PREPROC_INCLUDES_SOURCE"] = "\t" + ToMsysSlash(source)
-			replace_map["ARDUINO_PREPROC_INCLUDES_OUTFILE"] = "\t" + ToMsysSlash(target)
+			replace_map["ARDUINO_PREPROC_INCLUDES_SOURCE"] = "\t" + toslash(source)
+			replace_map["ARDUINO_PREPROC_INCLUDES_OUTFILE"] = "\t" + toslash(target)
 		} else {
 			replace_map["ARDUINO_PREPROC_MACROS_FLAGS"]    = "\t" + strings.Join(includes, " ")
-			replace_map["ARDUINO_PREPROC_MACROS_SOURCE"]   = "\t" + filepath.ToSlash(source)
-			replace_map["ARDUINO_PREPROC_MACROS_OUTFILE"]   = "\t" + ToMsysSlash(target)
+			replace_map["ARDUINO_PREPROC_MACROS_SOURCE"]   = "\t" + toslash(source)
+			replace_map["ARDUINO_PREPROC_MACROS_OUTFILE"]   = "\t" + toslash(target)
 		}
 
 		replace_map["ARDUINO_PREPROC_MACROS_INCLUDE_DIRS"]    = strings.Join(include_dirs, " ")
