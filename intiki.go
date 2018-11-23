@@ -324,6 +324,7 @@ var (
 	uploader_path string
 	includes string
 	make_command string
+	path_format string
 	make_processnum int
 	verbose int
 	woff bool
@@ -356,6 +357,7 @@ func main() {
 	flag.StringVar(&platform_version,	"platform.version", "",		"version")
 	flag.StringVar(&includes,		"includes", "",			"includes")
 	flag.StringVar(&make_command,		"make.command", "make",		"make command executable")
+	flag.StringVar(&path_format,		"path.format", "unix",		"path format")
 	flag.IntVar(&make_processnum,		"make.processnum", -1,		"make process number")
 	flag.IntVar(&verbose,			"verbose", -1,			"verbose level")
 	flag.BoolVar(&woff,			"w", false,			"verbose level")
@@ -482,6 +484,11 @@ func main() {
 
 		verbose = 0
 
+		toslash := filepath.ToSlash
+		if path_format == "msys" {
+			toslash = ToMsysSlash
+		}
+
 		includes := []string{}
 		include_dirs := []string{}
 		def_macros := []string{}
@@ -499,8 +506,8 @@ func main() {
 				continue
 			} else if flaggroup == "-includes" {
 				if strings.HasPrefix(f,"-I") {
-					d = filepath.ToSlash(f[2:])
-					f = "-I" + ToMsysSlash(f[2:])
+					d = toslash(f[2:])
+					f = "-I" + toslash(f[2:])
 				}
 				includes = append(includes, f)
 				include_dirs = append(include_dirs, d)
@@ -521,16 +528,16 @@ func main() {
 			decode_from_file(preprocfile, &replace_map);
 		}
 
-		replace_map["ARDUINO_SYSTEM_PATH"] = ToMsysSlash(system_path)
-		replace_map["ARDUINO_VARIANT_PATH"] = ToMsysSlash(variant_path)
+		replace_map["ARDUINO_SYSTEM_PATH"] = toslash(system_path)
+		replace_map["ARDUINO_VARIANT_PATH"] = toslash(variant_path)
 		if(recipe == "preproc.includes") {
 			replace_map["ARDUINO_PREPROC_INCLUDES_FLAGS"]  = "\t" + strings.Join(includes, " ")
-			replace_map["ARDUINO_PREPROC_INCLUDES_SOURCE"] = "\t" + ToMsysSlash(source)
-			replace_map["ARDUINO_PREPROC_INCLUDES_OUTFILE"] = "\t" + ToMsysSlash(target)
+			replace_map["ARDUINO_PREPROC_INCLUDES_SOURCE"] = "\t" + toslash(source)
+			replace_map["ARDUINO_PREPROC_INCLUDES_OUTFILE"] = "\t" + toslash(target)
 		} else {
 			replace_map["ARDUINO_PREPROC_MACROS_FLAGS"]    = "\t" + strings.Join(includes, " ")
-			replace_map["ARDUINO_PREPROC_MACROS_SOURCE"]   = "\t" + ToMsysSlash(source)
-			replace_map["ARDUINO_PREPROC_MACROS_OUTFILE"]   = "\t" + ToMsysSlash(target)
+			replace_map["ARDUINO_PREPROC_MACROS_SOURCE"]   = "\t" + toslash(source)
+			replace_map["ARDUINO_PREPROC_MACROS_OUTFILE"]   = "\t" + toslash(target)
 		}
 
 		replace_map["ARDUINO_PREPROC_MACROS_INCLUDE_DIRS"]    = strings.Join(include_dirs, " ")
@@ -558,7 +565,7 @@ func main() {
 		makefilename := filepath.ToSlash(makefile)
 		makedir := path.Dir(makefilename)
 		if makefilename == "" {
-			makefilename = build_path + strings.Replace(path.Base(template), ".template", "", -1)
+			makefilename = build_path + string(os.PathSeparator) + strings.Replace(path.Base(template), ".template", "", -1)
 		} else if makedir == "" {
 			makedir = build_path
 		}
@@ -602,13 +609,18 @@ func main() {
 			commands = append(commands, cmd)
 		}
 
+		toslash := filepath.ToSlash
+		if path_format == "msys" {
+			toslash = ToMsysSlash
+		}
+
 		cores_srcs := func() string {
 			cores_srcs := select_command(commands, func (c Command) bool {
 				return (strings.HasSuffix(c.Recipe, ".o") && c.Stage == "core" && strings.HasPrefix(c.Source, core_path) )
 			} )
 
-			cores_list := collect_string(cores_srcs, func (c Command) string { return ToMsysSlash(c.Source) } )
-			return ("\t" + strings.Join(cores_list, " \\\n\t") + "\n")
+			cores_list := collect_string(cores_srcs, func (c Command) string { return toslash(c.Source) } )
+			return ("\t" + strings.Join(cores_list, " \t") )
 		}
 
 		variant_srcs := func() string {
@@ -616,8 +628,8 @@ func main() {
 				return (strings.HasSuffix(c.Recipe, ".o") && c.Stage == "core" && strings.HasPrefix(c.Source, variant_path) )
 			} )
 
-			var_list := collect_string(var_srcs, func (c Command) string { return ToMsysSlash(c.Source) } )
-			return ("\t" + strings.Join(var_list, " \\\n\t") + "\n")
+			var_list := collect_string(var_srcs, func (c Command) string { return toslash(c.Source) } )
+			return ("\t" + strings.Join(var_list, " \t") )
 		}
 
 		libs_srcs := func() string {
@@ -625,8 +637,8 @@ func main() {
 				return (strings.HasSuffix(c.Recipe, ".o") && c.Stage == "libraries")
 			})
 
-			libs_srcs := collect_string(libcmds, func (c Command) string { return ToMsysSlash(c.Source) } )
-			return ("\t" + strings.Join(libs_srcs, " \\\n\t") + "\n")
+			libs_srcs := collect_string(libcmds, func (c Command) string { return toslash(c.Source) } )
+			return ("\t" + strings.Join(libs_srcs, " \t") )
 		}
 
 		sketch_srcs := func() string {
@@ -634,8 +646,8 @@ func main() {
 				return (strings.HasSuffix(c.Recipe, ".o") && c.Stage == "sketch")
 			} )
 
-			sketchs_list := collect_string(sketches, func (c Command) string { return ToMsysSlash(c.Source) } )
-			return ("\t" + strings.Join(sketchs_list, " \\\n\t") + "\n")
+			sketchs_list := collect_string(sketches, func (c Command) string { return toslash(c.Source) } )
+			return ("\t" + strings.Join(sketchs_list, " \t") )
 		}
 
 		sketch_flags := func() string {
@@ -650,7 +662,7 @@ func main() {
 				for _, flg := range cmd.Flags {
 					if !contains(flgs, flg) {
 						if (strings.HasPrefix(flg, "-I") || strings.HasPrefix(flg, "-L") ) {
-							flg = flg[0:2] + ToMsysSlash(flg[2:])
+							flg = flg[0:2] + toslash(flg[2:])
 						}
 						flgs = append(flgs, flg)
 					}
@@ -672,7 +684,7 @@ func main() {
 				for _, flg := range cmd.Flags {
 					if !contains(flgs, flg) {
 						if (strings.HasPrefix(flg, "-I") ) {
-							flg = ToMsysSlash(flg[2:])
+							flg = toslash(flg[2:])
 							flgs = append(flgs, flg)
 						}
 					}
@@ -694,7 +706,7 @@ func main() {
 				for _, flg := range cmd.Flags {
 					if !contains(flgs, flg) {
 						if (strings.HasPrefix(flg, "-L") ) {
-							flg = ToMsysSlash(flg[2:])
+							flg = toslash(flg[2:])
 							flgs = append(flgs, flg)
 						}
 					}
