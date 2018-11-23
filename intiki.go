@@ -565,7 +565,7 @@ func main() {
 		makefilename := filepath.ToSlash(makefile)
 		makedir := path.Dir(makefilename)
 		if makefilename == "" {
-			makefilename = build_path + strings.Replace(path.Base(template), ".template", "", -1)
+			makefilename = build_path + string(os.PathSeparator) + strings.Replace(path.Base(template), ".template", "", -1)
 		} else if makedir == "" {
 			makedir = build_path
 		}
