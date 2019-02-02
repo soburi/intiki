@@ -169,13 +169,24 @@ func format_makefile(template string, replace map[string]string) string {
 	return out
 }
 
-func ToMsysSlash(p string) string {
+func ToSlash(p string) string {
 	s := filepath.ToSlash(p)
 	if len(s) < 4 {
-		return s
+		return p
+	}
+	if (s[1:3] != ":/") {
+		return p
+	}
+	return s
+}
+
+func ToMsysSlash(p string, prefix string) string {
+	s := ToSlash(p)
+	if len(s) < 4 {
+		return p
 	}
 	if (s[1:3] == ":/") {
-		ss := "/"
+		ss := prefix + "/"
 		ss += strings.ToLower(s[0:1])
 		ss += s[2:]
 		return ss
@@ -325,6 +336,7 @@ var (
 	includes string
 	make_command string
 	path_format string
+	path_prefix string
 	make_processnum int
 	verbose int
 	woff bool
@@ -358,6 +370,7 @@ func main() {
 	flag.StringVar(&includes,		"includes", "",			"includes")
 	flag.StringVar(&make_command,		"make.command", "make",		"make command executable")
 	flag.StringVar(&path_format,		"path.format", "unix",		"path format")
+	flag.StringVar(&path_prefix,		"path.prefix", "",		"path prefix")
 	flag.IntVar(&make_processnum,		"make.processnum", -1,		"make process number")
 	flag.IntVar(&verbose,			"verbose", -1,			"verbose level")
 	flag.BoolVar(&woff,			"w", false,			"verbose level")
@@ -473,7 +486,20 @@ func main() {
 			}
 		}
 
-		args := append(sys_args, flags...)
+		//args := append(sys_args, flags...)
+		toslash := ToSlash
+		if path_format == "msys" {
+			toslash = func(p string) string { return ToMsysSlash(p, path_prefix) }
+		}
+		args := sys_args
+		for _, f := range flags {
+			idx := strings.Index(f, "=")
+			if(idx >=0) {
+				args = append(args, f[:idx] + "=" + toslash(f[idx+1:]))
+			} else {
+				args = append(args, toslash(f))
+			}
+		}
 
 		exitStatus := ExecCommand(os.Stdout, os.Stderr, make_command, args...)
 		os.Exit(exitStatus)
@@ -484,9 +510,9 @@ func main() {
 
 		verbose = 0
 
-		toslash := filepath.ToSlash
+		toslash := ToSlash
 		if path_format == "msys" {
-			toslash = ToMsysSlash
+			toslash = func(p string) string { return ToMsysSlash(p, path_prefix) }
 		}
 
 		includes := []string{}
@@ -502,7 +528,12 @@ func main() {
 			}
 
 			if flaggroup == "-make-args" {
-				args = append(args, f)
+				idx := strings.Index(f, "=")
+				if(idx >=0) {
+					args = append(args, f[:idx] + "=" + toslash(f[idx+1:]))
+				} else {
+					args = append(args, toslash(f))
+				}
 				continue
 			} else if flaggroup == "-includes" {
 				if strings.HasPrefix(f,"-I") {
@@ -513,7 +544,12 @@ func main() {
 				include_dirs = append(include_dirs, d)
 			} else {
 				if strings.HasPrefix(f, "-D") {
-					def_macros = append(def_macros, f[2:])
+					idx := strings.Index(f, "=")
+					if(idx < 0) {
+						def_macros = append(def_macros, f[2:])
+					} else {
+						def_macros = append(def_macros, f[2:idx] + "=" + toslash(f[idx+1:]))
+					}
 				}
 			}
 			includes = append(includes, f)
@@ -609,9 +645,9 @@ func main() {
 			commands = append(commands, cmd)
 		}
 
-		toslash := filepath.ToSlash
+		toslash := ToSlash
 		if path_format == "msys" {
-			toslash = ToMsysSlash
+			toslash = func(p string) string { return ToMsysSlash(p, path_prefix) }
 		}
 
 		cores_srcs := func() string {
@@ -750,12 +786,12 @@ func main() {
 		}
 
 		replace_map["ARDUINO_CFLAGS"] = sketch_flags()
-		replace_map["ARDUINO_PROJECT_NAME"] = ToMsysSlash(ldcmd.ProjectName)
-		replace_map["ARDUINO_SYSTEM_PATH"] = ToMsysSlash(ldcmd.SystemPath)
-		replace_map["ARDUINO_BUILD_PATH"] = ToMsysSlash(ldcmd.BuildPath)
-		replace_map["ARDUINO_CORE_PATH"] = ToMsysSlash(ldcmd.CorePath)
-		replace_map["ARDUINO_VARIANT_PATH"] = ToMsysSlash(ldcmd.VariantPath)
-		replace_map["ARDUINO_ARCHIVE_FILE"] = ToMsysSlash(ldcmd.ArchiveFile)
+		replace_map["ARDUINO_PROJECT_NAME"] = ToMsysSlash(ldcmd.ProjectName, path_prefix)
+		replace_map["ARDUINO_SYSTEM_PATH"] = ToMsysSlash(ldcmd.SystemPath, path_prefix)
+		replace_map["ARDUINO_BUILD_PATH"] = ToMsysSlash(ldcmd.BuildPath, path_prefix)
+		replace_map["ARDUINO_CORE_PATH"] = ToMsysSlash(ldcmd.CorePath, path_prefix)
+		replace_map["ARDUINO_VARIANT_PATH"] = ToMsysSlash(ldcmd.VariantPath, path_prefix)
+		replace_map["ARDUINO_ARCHIVE_FILE"] = ToMsysSlash(ldcmd.ArchiveFile, path_prefix)
 		replace_map["ARDUINO_CORES_SRCS"] = cores_srcs()
 		replace_map["ARDUINO_VARIANT_SRCS"] = variant_srcs()
 		replace_map["ARDUINO_LIBRARIES_SRCS"] = libs_srcs()
