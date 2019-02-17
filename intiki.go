@@ -30,15 +30,18 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"runtime"
 	"strings"
@@ -167,6 +170,64 @@ func format_makefile(template string, replace map[string]string) string {
 
 	//Verbose(5, out)
 	return out
+}
+
+func write_makefile(makefile string, templatefile string, replace_map map[string]string) (int, error) {
+
+	content := format_makefile(filepath.ToSlash(templatefile), replace_map)
+
+	makefilename := filepath.ToSlash(makefile)
+	makedir := path.Dir(makefilename)
+	if makefilename == "" {
+		makefilename = build_path + string(os.PathSeparator) + strings.Replace(path.Base(templatefile), ".template", "", -1)
+	} else if makedir == "" {
+		makedir = build_path
+	}
+	err := os.MkdirAll(makedir, os.ModePerm)
+
+	if err != nil {
+		Verbose(1, "os.MkdirAll(%s) failed %v", makedir, err)
+		log.Fatal("os.MkdirAll(%s) failed %v", makedir, err)
+	}
+
+	prev_hash := sha256.New()
+	new_hash := sha256.New()
+
+	f, err := os.Open(makefilename)
+	if err != nil {
+		Verbose(3, "os.Open(%s) failed %v", makefilename, err)
+	} else {
+		Verbose(6, "old file exists")
+		_, err = io.Copy(prev_hash, f)
+		f.Close()
+	}
+	_, err = io.Copy(new_hash, bytes.NewReader([]byte(content)))
+	if err != nil {
+		Verbose(1, "io.Copy() failed %v", err)
+		log.Fatal("io.Copy() failed %v", err)
+	}
+
+	if reflect.DeepEqual(new_hash.Sum(nil), prev_hash.Sum(nil)) {
+		Verbose(6, "%s hash not changed %v", makefilename, new_hash.Sum(nil) )
+		
+		notchangedfile := path.Join(path.Dir(makefilename), ".NOT_CHANGED")
+		os.Remove(notchangedfile)
+		f, err = os.OpenFile(notchangedfile, os.O_RDONLY|os.O_CREATE, 0666)
+		if err != nil {
+			f.Close()
+		}
+		return 1, nil
+	} else {
+		Verbose(6, "%s hash changed %v", makefilename, new_hash.Sum(nil) )
+		Verbose(6, "%s hash changed %v", makefilename, prev_hash.Sum(nil) )
+		os.Remove(makefilename)
+		_, err = write_file(makefilename, []byte(content))
+		if err != nil {
+			return -1, err
+		}
+	}
+
+	return 0, nil
 }
 
 func ToSlash(p string) string {
@@ -596,23 +657,7 @@ func main() {
 
 		_, err = encode_to_file(preprocfile, replace_map)
 
-		out := format_makefile(filepath.ToSlash(template), replace_map)
-
-		makefilename := filepath.ToSlash(makefile)
-		makedir := path.Dir(makefilename)
-		if makefilename == "" {
-			makefilename = build_path + string(os.PathSeparator) + strings.Replace(path.Base(template), ".template", "", -1)
-		} else if makedir == "" {
-			makedir = build_path
-		}
-		err = os.MkdirAll(makedir, os.ModePerm)
-
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-		}
-
-		os.Remove(makefilename)
-		write_file(makefilename, []byte(out))
+		_, err = write_makefile(makefile, template, replace_map)
 
 		var bufStdErr bytes.Buffer
 		var bufStdOut bytes.Buffer
@@ -806,24 +851,8 @@ func main() {
 		replace_map["ARDUINO_PREPROC_MACROS_OUTFILE"]   = ""
 		replace_map["ARDUINO_PREPROC_MACROS_INCLUDE_DIRS"]    = ""
 		replace_map["ARDUINO_PREPROC_MACROS_DEFINE_MACROS"]    = ""
-		out := format_makefile(template, replace_map)
 
-		makefilename := filepath.ToSlash(makefile)
-		makedir := path.Dir(makefilename)
-		if makefilename == "" {
-			makefilename = build_path + string(os.PathSeparator) + strings.Replace(path.Base(template), ".template", "", -1)
-		} else if makedir == "" || makedir == "." {
-			makedir = build_path
-		}
-
-		err = os.MkdirAll(makedir, os.ModePerm)
-
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-		}
-
-		os.Remove(makefilename)
-		write_file(makefilename, []byte(out))
+		_, err = write_makefile(makefile, template, replace_map)
 
 		if verbose < 10  {
 			for _, f := range genmfs {
