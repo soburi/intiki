@@ -613,8 +613,6 @@ func main() {
 					}
 				}
 			}
-			includes = append(includes, f)
-			include_dirs = append(include_dirs, d)
 		}
 
 		replace_map := map[string]string {}
