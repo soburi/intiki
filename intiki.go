@@ -583,7 +583,10 @@ func main() {
 		flaggroup := ""
 		d := ""
 		for _, f := range flags {
-			if f == "-includes" || f == "-make-args" {
+			if f == "-includes" {
+				continue
+			}
+			if f == "-end-make-args" || f == "-make-args" {
 				flaggroup = f
 				continue
 			}
@@ -596,14 +599,13 @@ func main() {
 					args = append(args, toslash(f))
 				}
 				continue
-			} else if flaggroup == "-includes" {
+			} else {
 				if strings.HasPrefix(f,"-I") {
 					d = toslash(f[2:])
 					f = "-I" + toslash(f[2:])
+					includes = append(includes, f)
+					include_dirs = append(include_dirs, d)
 				}
-				includes = append(includes, f)
-				include_dirs = append(include_dirs, d)
-			} else {
 				if strings.HasPrefix(f, "-D") {
 					idx := strings.Index(f, "=")
 					if(idx < 0) {
